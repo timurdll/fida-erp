@@ -1,11 +1,270 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// USERS & AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  login     String   @unique
+  password  String   // bcrypt hash
+  role      UserRole
+  isActive  Boolean  @default(true)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications    Application[]
+  firstWeighings  PlumbLog[]    @relation("FirstOperator")
+  secondWeighings PlumbLog[]    @relation("SecondOperator")
+}
+
+enum UserRole {
+  ADMIN           // Админ
+  DEPUTY_DIRECTOR // Заместитель директора
+  SALES_HEAD      // Руководитель отдела продаж
+  MANAGER         // Менеджер отдела продаж
+  DISPATCHER      // Диспетчер весовой
+}
+
+// ─────────────────────────────────────────────
+// DICTIONARIES
+// ─────────────────────────────────────────────
+
+model Company {
+  id           Int             @id @default(autoincrement())
+  name         String
+  function     CompanyFunction
+  bin          String?
+  type         CompanyType
+  contactPhone String?
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  objects          Object[]
+  supplierApps     Application[] @relation("AppSupplier")
+  customerApps     Application[] @relation("AppCustomer")
+  supplierPlumbs   PlumbLog[]    @relation("PlumbSupplier")
+  customerPlumbs   PlumbLog[]    @relation("PlumbCustomer")
+}
+
+enum CompanyFunction {
+  CUSTOMER // Заказчик
+  SUPPLIER // Поставщик
+  ALL      // Все
+}
+
+enum CompanyType {
+  TOO
+  IP
+  CHL // Частное лицо
+}
+
+model Object {
+  id             Int      @id @default(autoincrement())
+  name           String
+  companyId      Int
+  address        String?
+  receiverPhone  String?  // Номер встречающего
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  applications Application[]
+  plumbLogs    PlumbLog[]
+}
+
+model Material {
+  id        Int          @id @default(autoincrement())
+  name      String
+  type      MaterialType
+  density   Float?       // Удельный вес (т/м³)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  applications Application[]
+  plumbLogs    PlumbLog[]
+}
+
+enum MaterialType {
+  CONCRETE // Бетон
+  SAND     // Песок
+  GRAVEL   // Щебень
+  CEMENT   // Цемент
+  OTHER    // Прочее
+}
+
+model Construction {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String?
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+  plumbLogs    PlumbLog[]
+}
+
+model DeliveryMethod {
+  id        Int      @id @default(autoincrement())
+  name      String   // Способ приемки
+  type      String?
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+}
+
+model Carrier {
+  id        Int      @id @default(autoincrement())
+  name      String   // Перевозчик
+  note      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transports Transport[]
+  plumbLogs  PlumbLog[]
+}
+
+model Driver {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transports Transport[]
+  plumbLogs  PlumbLog[]
+}
+
+model Transport {
+  id          Int      @id @default(autoincrement())
+  plateNumber String   @unique // Гос. номер
+  driverId    Int?
+  carrierId   Int?
+  tare        Int      // Тара (кг)
+  tolerance   Float    @default(0) // Погрешность (%)
+  note        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  driver    Driver?   @relation(fields: [driverId], references: [id])
+  carrier   Carrier?  @relation(fields: [carrierId], references: [id])
+  plumbLogs PlumbLog[]
+}
+
+// ─────────────────────────────────────────────
+// APPLICATIONS (Заявки)
+// ─────────────────────────────────────────────
+
+model Application {
+  id               Int               @id @default(autoincrement())
+  supplierId       Int
+  customerId       Int
+  objectId         Int
+  materialId       Int
+  constructionId   Int?
+  deliveryMethodId Int?
+  authorId         Int
+  targetVolume     Float             // Целевая кубатура
+  deliveryDate     DateTime          // Дата доставки
+  deliveryTime     String?           // Время подачи на объект (HH:mm)
+  loadingInterval  Int?              // Интервал погрузки (мин)
+  slumpCone        Float?            // Осадка конуса
+  note             String?
+  status           ApplicationStatus @default(PENDING)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  supplier       Company         @relation("AppSupplier", fields: [supplierId], references: [id])
+  customer       Company         @relation("AppCustomer", fields: [customerId], references: [id])
+  object         Object          @relation(fields: [objectId], references: [id])
+  material       Material        @relation(fields: [materialId], references: [id])
+  construction   Construction?   @relation(fields: [constructionId], references: [id])
+  deliveryMethod DeliveryMethod? @relation(fields: [deliveryMethodId], references: [id])
+  author         User            @relation(fields: [authorId], references: [id])
+  plumbLogs      PlumbLog[]
+}
+
+enum ApplicationStatus {
+  PENDING     // Ожидает (синий)
+  IN_PROGRESS // В процессе (жёлтый/зелёный)
+  COMPLETED   // Завершена (зелёный)
+  CANCELLED   // Отменена
+}
+
+// ─────────────────────────────────────────────
+// PLUMB LOGS (Отвесы)
+// ─────────────────────────────────────────────
+
+model PlumbLog {
+  id             Int  @id @default(autoincrement())
+  applicationId  Int?
+  supplierId     Int
+  customerId     Int
+  materialId     Int
+  objectId       Int?
+  transportId    Int?
+  driverId       Int?
+  carrierId      Int?
+  constructionId Int?
+
+  // Данные по весу
+  tare           Int  // Тара (кг)
+  gross          Int? // Брутто (кг)
+  net            Int? // Нетто = Брутто - Тара (хранится для быстрой выборки)
+
+  // Данные для бетона
+  volume         Float?  // Кубатура (м³)
+  returnVolume   Float?  // Кубатура возврата
+  sealNumber     String? // Номер пломбы
+  slumpCone      Float?  // Осадка конуса
+  bsuNumber      String? // Номер БСУ
+  deliveryType   String? // Тип перевозки
+
+  // Данные для сырья (песок, щебень)
+  impurity       Float?  // Сорность (%)
+  cleanNet       Int?    // Чистый вес
+  documentWeight Int?    // Вес по документам
+  nomenclature   String? // Тип номенклатуры
+
+  // Мониторинг взвешиваний
+  firstWeighingAt  DateTime?
+  firstOperatorId  Int?
+  secondWeighingAt DateTime?
+  secondOperatorId Int?
+
+  isActive  Boolean  @default(true)
+  isReturn  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  application    Application?  @relation(fields: [applicationId], references: [id])
+  supplier       Company       @relation("PlumbSupplier", fields: [supplierId], references: [id])
+  customer       Company       @relation("PlumbCustomer", fields: [customerId], references: [id])
+  material       Material      @relation(fields: [materialId], references: [id])
+  object         Object?       @relation(fields: [objectId], references: [id])
+  transport      Transport?    @relation(fields: [transportId], references: [id])
+  driver         Driver?       @relation(fields: [driverId], references: [id])
+  carrier        Carrier?      @relation(fields: [carrierId], references: [id])
+  construction   Construction? @relation(fields: [constructionId], references: [id])
+  firstOperator  User?         @relation("FirstOperator", fields: [firstOperatorId], references: [id])
+  secondOperator User?         @relation("SecondOperator", fields: [secondOperatorId], references: [id])
 }
