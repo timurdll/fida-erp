@@ -14,5 +14,6 @@ export interface ICompanyRepository {
   findById(id: number): Promise<CompanyEntity | null>;
   create(data: CreateCompanyDto): Promise<CompanyEntity>;
   update(id: number, data: UpdateCompanyDto): Promise<CompanyEntity>;
+  activate(id: number): Promise<CompanyEntity>;
   deactivate(id: number): Promise<CompanyEntity>;
 }

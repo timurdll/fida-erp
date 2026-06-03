@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
 import { DriverForm } from '@/features/dictionaries/ui/DriverForm'
-import { getDrivers, createDriver, updateDriver, deactivateDriver } from '@/entities/driver/api/driverApi'
+import { getDrivers, createDriver, updateDriver, activateDriver, deactivateDriver } from '@/entities/driver/api/driverApi'
 import type { Driver, CreateDriverDto } from '@/entities/driver/model/types'
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -44,6 +44,11 @@ export function DriversTab() {
     } catch (e: any) { toast.error(e.message || 'Ошибка') } finally { setSaving(false) }
   }
 
+  const handleActivate = async (item: Driver) => {
+    try { await activateDriver(item.id); toast.success('Водитель активирован'); load(search, statusFilter) }
+    catch (e: any) { toast.error(e.message) }
+  }
+
   const handleDeactivate = async (item: Driver) => {
     try { await deactivateDriver(item.id); toast.success('Водитель деактивирован'); load(search, statusFilter) }
     catch (e: any) { toast.error(e.message) }
@@ -68,7 +73,7 @@ export function DriversTab() {
                   <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`} onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.fullName}</td>
                     <td className="px-4 py-3"><StatusBadge isActive={item.isActive} /></td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>{item.isActive && <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>{item.isActive ? <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem> : <DropdownMenuItem onClick={() => handleActivate(item)}><Power className="mr-2 h-4 w-4" />Активировать</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></td>
                   </tr>
                 ))}
             </tbody>

@@ -19,3 +19,7 @@ export function updateMaterial(id: number, dto: UpdateMaterialDto): Promise<Mate
 export function deactivateMaterial(id: number): Promise<Material> {
   return apiFetch<Material>(`/materials/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateMaterial(id: number): Promise<Material> {
+  return apiFetch<Material>(`/materials/${id}/activate`, { method: 'PATCH' })
+}

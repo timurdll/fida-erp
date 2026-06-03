@@ -37,6 +37,11 @@ export class PrismaConstructionRepository implements IConstructionRepository {
     return this.map(await this.prisma.construction.update({ where: { id }, data }));
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.construction.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<ConstructionEntity> {
     return this.map(await this.prisma.construction.update({ where: { id }, data: { isActive: false } }));
   }

@@ -37,6 +37,11 @@ export class PrismaDriverRepository implements IDriverRepository {
     return this.map(await this.prisma.driver.update({ where: { id }, data }));
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.driver.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<DriverEntity> {
     return this.map(await this.prisma.driver.update({ where: { id }, data: { isActive: false } }));
   }

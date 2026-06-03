@@ -19,3 +19,7 @@ export function updateConstruction(id: number, dto: UpdateConstructionDto): Prom
 export function deactivateConstruction(id: number): Promise<Construction> {
   return apiFetch<Construction>(`/constructions/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateConstruction(id: number): Promise<Construction> {
+  return apiFetch<Construction>(`/constructions/${id}/activate`, { method: 'PATCH' })
+}

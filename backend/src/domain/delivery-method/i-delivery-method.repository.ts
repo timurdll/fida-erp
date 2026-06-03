@@ -14,5 +14,6 @@ export interface IDeliveryMethodRepository {
   findById(id: number): Promise<DeliveryMethodEntity | null>;
   create(data: CreateDeliveryMethodDto): Promise<DeliveryMethodEntity>;
   update(id: number, data: UpdateDeliveryMethodDto): Promise<DeliveryMethodEntity>;
+  activate(id: number): Promise<DeliveryMethodEntity>;
   deactivate(id: number): Promise<DeliveryMethodEntity>;
 }

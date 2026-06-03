@@ -47,6 +47,11 @@ export class PrismaCompanyRepository implements ICompanyRepository {
     return this.map(await this.prisma.company.update({ where: { id }, data }));
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.company.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<CompanyEntity> {
     return this.map(await this.prisma.company.update({ where: { id }, data: { isActive: false } }));
   }

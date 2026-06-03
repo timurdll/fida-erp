@@ -47,6 +47,11 @@ export class PrismaMaterialRepository implements IMaterialRepository {
     return this.map(r);
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.material.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<MaterialEntity> {
     const r = await this.prisma.material.update({ where: { id }, data: { isActive: false } });
     return this.map(r);

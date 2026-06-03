@@ -14,5 +14,6 @@ export interface IConstructionRepository {
   findById(id: number): Promise<ConstructionEntity | null>;
   create(data: CreateConstructionDto): Promise<ConstructionEntity>;
   update(id: number, data: UpdateConstructionDto): Promise<ConstructionEntity>;
+  activate(id: number): Promise<ConstructionEntity>;
   deactivate(id: number): Promise<ConstructionEntity>;
 }

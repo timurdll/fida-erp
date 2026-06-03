@@ -37,6 +37,11 @@ export class PrismaCarrierRepository implements ICarrierRepository {
     return this.map(await this.prisma.carrier.update({ where: { id }, data }));
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.carrier.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<CarrierEntity> {
     return this.map(await this.prisma.carrier.update({ where: { id }, data: { isActive: false } }));
   }

@@ -15,5 +15,6 @@ export interface IObjectRepository {
   findById(id: number): Promise<ObjectEntity | null>;
   create(data: CreateObjectDto): Promise<ObjectEntity>;
   update(id: number, data: UpdateObjectDto): Promise<ObjectEntity>;
+  activate(id: number): Promise<ObjectEntity>;
   deactivate(id: number): Promise<ObjectEntity>;
 }

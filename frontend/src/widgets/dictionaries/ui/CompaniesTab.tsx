@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
 import { CompanyForm } from '@/features/dictionaries/ui/CompanyForm'
-import { getCompanies, createCompany, updateCompany, deactivateCompany } from '@/entities/company/api/companyApi'
+import { getCompanies, createCompany, updateCompany, deactivateCompany, activateCompany } from '@/entities/company/api/companyApi'
 import type { Company, CreateCompanyDto } from '@/entities/company/model/types'
 import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model/types'
 
@@ -53,6 +53,11 @@ export function CompaniesTab() {
       setSheetOpen(false)
       load(search, statusFilter)
     } catch (e: any) { toast.error(e.message || 'Ошибка сохранения') } finally { setSaving(false) }
+  }
+
+  const handleActivate = async (item: Company) => {
+    try { await activateCompany(item.id); toast.success('Компания активирована'); load(search, statusFilter) }
+    catch (e: any) { toast.error(e.message) }
   }
 
   const handleDeactivate = async (item: Company) => {
@@ -115,7 +120,7 @@ export function CompaniesTab() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>
-                        {item.isActive && <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem>}
+                        {item.isActive ? <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem> : <DropdownMenuItem onClick={() => handleActivate(item)}><Power className="mr-2 h-4 w-4" />Активировать</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>

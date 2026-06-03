@@ -51,6 +51,10 @@ export class PrismaObjectRepository implements IObjectRepository {
     return this.map(await this.prisma.object.update({ where: { id }, data, include: INCLUDE }));
   }
 
+  async activate(id: number) {
+    return this.map(await this.prisma.object.update({ where: { id }, data: { isActive: true }, include: INCLUDE }));
+  }
+
   async deactivate(id: number): Promise<ObjectEntity> {
     return this.map(await this.prisma.object.update({ where: { id }, data: { isActive: false }, include: INCLUDE }));
   }

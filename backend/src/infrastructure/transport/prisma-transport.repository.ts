@@ -75,6 +75,10 @@ export class PrismaTransportRepository implements ITransportRepository {
     }));
   }
 
+  async activate(id: number) {
+    return this.map(await this.prisma.transport.update({ where: { id }, data: { isActive: true }, include: INCLUDE }));
+  }
+
   async deactivate(id: number): Promise<TransportEntity> {
     return this.map(await this.prisma.transport.update({ where: { id }, data: { isActive: false }, include: INCLUDE }));
   }

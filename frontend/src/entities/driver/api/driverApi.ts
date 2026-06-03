@@ -19,3 +19,7 @@ export function updateDriver(id: number, dto: UpdateDriverDto): Promise<Driver> 
 export function deactivateDriver(id: number): Promise<Driver> {
   return apiFetch<Driver>(`/drivers/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateDriver(id: number): Promise<Driver> {
+  return apiFetch<Driver>(`/drivers/${id}/activate`, { method: 'PATCH' })
+}

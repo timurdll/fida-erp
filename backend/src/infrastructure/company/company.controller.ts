@@ -37,6 +37,13 @@ export class CompanyController {
     return this.service.update(id, dto);
   }
 
+@Patch(':id/activate')
+  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR)
+  @UseGuards(RolesGuard)
+  activate(@Param('id', ParseIntPipe) id: number) {
+    return this.service.activate(id);
+  }
+
   @Patch(':id/deactivate')
   @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR)
   @UseGuards(RolesGuard)

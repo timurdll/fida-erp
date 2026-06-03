@@ -19,3 +19,7 @@ export function updateDeliveryMethod(id: number, dto: UpdateDeliveryMethodDto): 
 export function deactivateDeliveryMethod(id: number): Promise<DeliveryMethod> {
   return apiFetch<DeliveryMethod>(`/delivery-methods/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateDeliveryMethod(id: number): Promise<DeliveryMethod> {
+  return apiFetch<DeliveryMethod>(`/delivery-methods/${id}/activate`, { method: 'PATCH' })
+}

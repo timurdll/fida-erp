@@ -14,5 +14,6 @@ export interface IDriverRepository {
   findById(id: number): Promise<DriverEntity | null>;
   create(data: CreateDriverDto): Promise<DriverEntity>;
   update(id: number, data: UpdateDriverDto): Promise<DriverEntity>;
+  activate(id: number): Promise<DriverEntity>;
   deactivate(id: number): Promise<DriverEntity>;
 }

@@ -12,7 +12,6 @@ export class CarrierService {
   ) {}
 
   findAll(filters: CarrierFilters = {}) {
-    if (filters.isActive === undefined) filters.isActive = true;
     return this.repo.findAll(filters);
   }
 
@@ -27,6 +26,11 @@ export class CarrierService {
   async update(id: number, dto: UpdateCarrierDto) {
     await this.findById(id);
     return this.repo.update(id, dto);
+  }
+
+  async activate(id: number) {
+    await this.findById(id);
+    return this.repo.activate(id);
   }
 
   async deactivate(id: number) {

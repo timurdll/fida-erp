@@ -16,5 +16,6 @@ export interface ITransportRepository {
   findById(id: number): Promise<TransportEntity | null>;
   create(data: CreateTransportDto): Promise<TransportEntity>;
   update(id: number, data: UpdateTransportDto): Promise<TransportEntity>;
+  activate(id: number): Promise<TransportEntity>;
   deactivate(id: number): Promise<TransportEntity>;
 }

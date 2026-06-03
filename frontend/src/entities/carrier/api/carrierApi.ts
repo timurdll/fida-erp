@@ -19,3 +19,7 @@ export function updateCarrier(id: number, dto: UpdateCarrierDto): Promise<Carrie
 export function deactivateCarrier(id: number): Promise<Carrier> {
   return apiFetch<Carrier>(`/carriers/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateCarrier(id: number): Promise<Carrier> {
+  return apiFetch<Carrier>(`/carriers/${id}/activate`, { method: 'PATCH' })
+}

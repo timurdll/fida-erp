@@ -14,5 +14,6 @@ export interface IMaterialRepository {
   findById(id: number): Promise<MaterialEntity | null>;
   create(data: CreateMaterialDto): Promise<MaterialEntity>;
   update(id: number, data: UpdateMaterialDto): Promise<MaterialEntity>;
+  activate(id: number): Promise<MaterialEntity>;
   deactivate(id: number): Promise<MaterialEntity>;
 }

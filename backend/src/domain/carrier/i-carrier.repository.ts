@@ -14,5 +14,6 @@ export interface ICarrierRepository {
   findById(id: number): Promise<CarrierEntity | null>;
   create(data: CreateCarrierDto): Promise<CarrierEntity>;
   update(id: number, data: UpdateCarrierDto): Promise<CarrierEntity>;
+  activate(id: number): Promise<CarrierEntity>;
   deactivate(id: number): Promise<CarrierEntity>;
 }

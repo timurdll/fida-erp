@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
 import { CarrierForm } from '@/features/dictionaries/ui/CarrierForm'
-import { getCarriers, createCarrier, updateCarrier, deactivateCarrier } from '@/entities/carrier/api/carrierApi'
+import { getCarriers, createCarrier, updateCarrier, activateCarrier, deactivateCarrier } from '@/entities/carrier/api/carrierApi'
 import type { Carrier, CreateCarrierDto } from '@/entities/carrier/model/types'
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -44,6 +44,11 @@ export function CarriersTab() {
     } catch (e: any) { toast.error(e.message || 'Ошибка') } finally { setSaving(false) }
   }
 
+  const handleActivate = async (item: Carrier) => {
+    try { await activateCarrier(item.id); toast.success('Активировано'); load(search, statusFilter) }
+    catch (e: any) { toast.error(e.message) }
+  }
+
   const handleDeactivate = async (item: Carrier) => {
     try { await deactivateCarrier(item.id); toast.success('Деактивировано'); load(search, statusFilter) }
     catch (e: any) { toast.error(e.message) }
@@ -69,7 +74,7 @@ export function CarriersTab() {
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.note || '—'}</td>
                     <td className="px-4 py-3"><StatusBadge isActive={item.isActive} /></td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>{item.isActive && <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>{item.isActive ? <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem> : <DropdownMenuItem onClick={() => handleActivate(item)}><Power className="mr-2 h-4 w-4" />Активировать</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></td>
                   </tr>
                 ))}
             </tbody>

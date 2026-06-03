@@ -12,7 +12,6 @@ export class MaterialService {
   ) {}
 
   findAll(filters: MaterialFilters = {}) {
-    if (filters.isActive === undefined) filters.isActive = true;
     return this.repo.findAll(filters);
   }
 
@@ -27,6 +26,11 @@ export class MaterialService {
   async update(id: number, dto: UpdateMaterialDto) {
     await this.findById(id);
     return this.repo.update(id, dto);
+  }
+
+  async activate(id: number) {
+    await this.findById(id);
+    return this.repo.activate(id);
   }
 
   async deactivate(id: number) {

@@ -20,3 +20,7 @@ export function updateObject(id: number, dto: UpdateObjectDto): Promise<ObjectIt
 export function deactivateObject(id: number): Promise<ObjectItem> {
   return apiFetch<ObjectItem>(`/objects/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateObject(id: number): Promise<ObjectItem> {
+  return apiFetch<ObjectItem>(`/objects/${id}/activate`, { method: 'PATCH' })
+}

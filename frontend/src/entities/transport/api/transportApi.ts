@@ -21,3 +21,7 @@ export function updateTransport(id: number, dto: UpdateTransportDto): Promise<Tr
 export function deactivateTransport(id: number): Promise<Transport> {
   return apiFetch<Transport>(`/transports/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateTransport(id: number): Promise<Transport> {
+  return apiFetch<Transport>(`/transports/${id}/activate`, { method: 'PATCH' })
+}

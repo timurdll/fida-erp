@@ -37,6 +37,11 @@ export class PrismaDeliveryMethodRepository implements IDeliveryMethodRepository
     return this.map(await this.prisma.deliveryMethod.update({ where: { id }, data }));
   }
 
+  async activate(id: number) {
+    const r = await this.prisma.deliveryMethod.update({ where: { id }, data: { isActive: true } });
+    return this.map(r);
+  }
+
   async deactivate(id: number): Promise<DeliveryMethodEntity> {
     return this.map(await this.prisma.deliveryMethod.update({ where: { id }, data: { isActive: false } }));
   }

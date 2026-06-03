@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
 import { MaterialForm } from '@/features/dictionaries/ui/MaterialForm'
-import { getMaterials, createMaterial, updateMaterial, deactivateMaterial } from '@/entities/material/api/materialApi'
+import { getMaterials, createMaterial, updateMaterial, activateMaterial, deactivateMaterial } from '@/entities/material/api/materialApi'
 import type { Material, CreateMaterialDto } from '@/entities/material/model/types'
 import { MaterialTypeLabel } from '@/entities/material/model/types'
 
@@ -47,6 +47,11 @@ export function MaterialsTab() {
       else { await createMaterial(data); toast.success('Материал создан') }
       setSheetOpen(false); load(search, statusFilter)
     } catch (e: any) { toast.error(e.message || 'Ошибка сохранения') } finally { setSaving(false) }
+  }
+
+  const handleActivate = async (item: Material) => {
+    try { await activateMaterial(item.id); toast.success('Материал активирован'); load(search, statusFilter) }
+    catch (e: any) { toast.error(e.message) }
   }
 
   const handleDeactivate = async (item: Material) => {
@@ -93,7 +98,7 @@ export function MaterialsTab() {
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => { setEditingItem(item); setSheetOpen(true) }}><Pencil className="mr-2 h-4 w-4" />Редактировать</DropdownMenuItem>
-                          {item.isActive && <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem>}
+                          {item.isActive ? <DropdownMenuItem onClick={() => handleDeactivate(item)} className="text-destructive focus:text-destructive"><Power className="mr-2 h-4 w-4" />Деактивировать</DropdownMenuItem> : <DropdownMenuItem onClick={() => handleActivate(item)}><Power className="mr-2 h-4 w-4" />Активировать</DropdownMenuItem>}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>

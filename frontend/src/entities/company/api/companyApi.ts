@@ -19,3 +19,7 @@ export function updateCompany(id: number, dto: UpdateCompanyDto): Promise<Compan
 export function deactivateCompany(id: number): Promise<Company> {
   return apiFetch<Company>(`/companies/${id}/deactivate`, { method: 'PATCH' })
 }
+
+export function activateCompany(id: number): Promise<Company> {
+  return apiFetch<Company>(`/companies/${id}/activate`, { method: 'PATCH' })
+}
