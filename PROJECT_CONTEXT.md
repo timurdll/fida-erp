@@ -1,7 +1,7 @@
 # FIDA ERP — Project Context
 
 ## Что это
-In-house ERP/CRM для компании FIDA (производство и доставка бетона). Цель — заменить сторонний подрядчик, перевести учёт отгрузок, логистику, печать накладных и аналитику во внутреннюю систему. Срок: 1.5 месяца.
+In-house ERP/CRM для компании FIDA (производство и доставка бетона). Цель — заменить сторонний подрядчик, перевести учёт отгрузок, логистику, печать накладных и аналитику во внутреннюю систему.
 
 ## Tech Stack
 - **Backend**: NestJS + PostgreSQL + Prisma 7 (adapter pattern через `@prisma/adapter-pg`)
@@ -38,7 +38,7 @@ src/
   views/    # FSD слой pages — страницы (named exports)
   widgets/  # самостоятельные блоки (Sidebar, Tab-виджеты)
   features/ # пользовательские сценарии (формы, действия)
-  entities/ # бизнес-объекты: model/types.ts + api/*Api.ts
+  entities/ # бизнес-объекты: model/types.ts + api/*Api.ts + model/queryKeys.ts
   shared/   # shadcn UI (shared/ui/), утилиты, API client, store, types
 ```
 > FSD слой pages называется `src/views/` (не конфликтует с Next.js Pages Router).
@@ -122,21 +122,14 @@ PlumbLog
 
 ---
 
-## Что уже сделано
+## Что сделано
 
 ### Backend ✅
 
-**Инфраструктура:**
-- Docker Compose + PostgreSQL 15, все таблицы созданы через `prisma db push`
-- Seed: `npx prisma db seed` → создаёт `admin / admin1234` (роль ADMIN)
-
-**Auth модуль** (полностью):
-- JWT + bcrypt, `JwtAuthGuard`, `RolesGuard`, `@CurrentUser()`, `@Roles()`
+**Auth модуль**: JWT + bcrypt, `JwtAuthGuard`, `RolesGuard`, `@CurrentUser()`, `@Roles()`
 - `POST /api/auth/login` → `{ accessToken, user }`, `GET /api/auth/me`
 
-**Users модуль:**
-- `GET/POST/PATCH/DELETE /api/users`
-- Создание/редактирование — только `ADMIN | DEPUTY_DIRECTOR`
+**Users модуль**: `GET/POST/PATCH/DELETE /api/users` (создание/редактирование — только `ADMIN | DEPUTY_DIRECTOR`)
 
 **Справочники — 8 модулей** (полностью, Clean Architecture + token DI):
 
@@ -153,54 +146,55 @@ PlumbLog
 
 Все справочники: `GET/POST /api/{entity}`, `PATCH /api/{entity}/:id`, `PATCH /api/{entity}/:id/deactivate`.
 Параметры: `?isActive=true&search=` (case-insensitive). Soft delete (`isActive=false`).
-Запись/деактивация: только `ADMIN | DEPUTY_DIRECTOR`.
+
+**Applications модуль** (полностью):
+- `GET /api/applications` — фильтры: `?deliveryDate=&status=&supplierId=&customerId=&materialId=&isActive=`
+- `GET /api/applications/:id` — возвращает `progress: { shippedVolume, loadingVolume, remainVolume, totalPlumbs }` и `plumbLogs[]`
+- `POST /api/applications` — `ADMIN | DEPUTY_DIRECTOR | SALES_HEAD | MANAGER`
+- `PATCH /api/applications/:id` — те же роли
+- `PATCH /api/applications/:id/complete` — `ADMIN | DEPUTY_DIRECTOR | DISPATCHER`
+- `PATCH /api/applications/:id/deactivate` — `ADMIN | DEPUTY_DIRECTOR`
 
 ### Frontend ✅
 
-**Инфраструктура:**
-- `apiFetch` (`shared/api/client.ts`) — JWT Bearer из Zustand, при 401 → clearAuth + redirect
-- `useAuthStore` (Zustand persist) — токен в localStorage + cookie `is_authed=1` для middleware
-- `middleware.ts` — защита всех роутов по cookie
-- `Providers` в layout — TanStack QueryClient + Sonner Toaster
-- Sonner: `import { toast } from 'sonner'`
+**Инфраструктура**: `apiFetch`, Zustand auth store, middleware, TanStack QueryClient, Sonner Toaster
 
-**Auth:**
-- `/login` → реальный API, toast при ошибке
-- Sidebar показывает имя/логин текущего пользователя, кнопка выхода работает
+**Реализованные страницы:**
 
-**Users (`/users`):**
-- Реальный API: список, создание (Dialog + react-hook-form), деактивация
-- Кнопка «Добавить» видна только `ADMIN | DEPUTY_DIRECTOR`
+| Роут | Описание |
+|------|----------|
+| `/login` | Авторизация, реальный API |
+| `/users` | CRUD пользователей, реальный API |
+| `/dictionaries` | 8 табов справочников, реальный API |
+| `/journal` | Журнал заявок: список на дату, аккордеон с plumbLogs, refetchInterval 30s |
+| `/plan` | План заявок: список + календарный вид (неделя/день с навигацией) |
+| `/plan/add` | Создание заявки; пресет `?date=&time=` из URL при клике в календаре |
+| `/plan/view/[id]` | Детали заявки: прогресс-бар, журнал отвесов, кнопки завершить/деактивировать |
+| `/plan/edit/[id]` | Редактирование заявки с предзаполнением |
 
-**Справочники (`/dictionaries`)** — 8 табов, все подключены к реальному API:
+**ApplicationForm** (`features/applications/ui/ApplicationForm.tsx`):
+- Props: `defaultValues?`, `onSubmit`, `isLoading?`, `submitLabel?`, `onCancel?`
+- DatePicker: Popover + Calendar (react-day-picker v10, без `initialFocus`)
+- TimePicker: два Select (часы 06–22, минуты 00/15/30/45)
+- Объект зависит от заказчика: сброс через `useEffect` при смене `customerId`
+- `deliveryDate` с бэкенда — полная ISO-строка, всегда `.slice(0, 10)` перед использованием
 
-Компании | Объекты | Материалы | Конструкция | Способ приёмки | Перевозчик | **Водители** | Транспорт
-
-Каждый таб (`widgets/dictionaries/ui/*Tab.tsx`):
-- debounce 300ms на поиск, фильтр по статусу
-- Skeleton при загрузке, `overflow-x-auto`
-- Клик по строке → Sheet редактирования
-- DropdownMenu: Редактировать / Деактивировать
-
-Формы (`features/dictionaries/ui/*Form.tsx`) — react-hook-form, предзаполнение при редактировании.
-
-`DictionarySheet` (`features/dictionaries/ui/DictionarySheet.tsx`) — переиспользуемая Sheet-обёртка. Запуск сабмита: `formRef.current?.requestSubmit()`.
-
-`SearchableSelect` (`shared/ui/SearchableSelect.tsx`) — Popover + Command, debounce 300ms. Используется в ObjectForm (companyId) и TransportForm (driverId, carrierId).
+**CalendarView** (внутри `ApplicationsPlanPage`):
+- Сопоставление заявок по `app.deliveryDate.slice(0, 10)` и `app.deliveryTime?.startsWith(slotHour + ':')`
+- В режиме календаря `deliveryDate` фильтр не передаётся — загружаются все активные заявки
 
 ---
 
 ## Что предстоит (по приоритету)
-1. **Модуль Заявок** — CRUD Applications, дашборд прогресса (бэк + фронт)
-2. **Рабочее место весовщика** — журнал PlumbLog, ввод тары/брутто, расчёт нетто
-3. **Печать ТТН** — HTML/CSS форма товарно-транспортной накладной
-4. **Отчёты** — экспорт в Excel
+1. **Рабочее место весовщика** — журнал PlumbLog, ввод тары/брутто, расчёт нетто
+2. **Печать ТТН** — HTML/CSS форма товарно-транспортной накладной
+3. **Отчёты** — экспорт в Excel
 
 ---
 
 ## Правила кодирования
 
-**Стили:** только CSS-переменные — `bg-background`, `bg-card`, `bg-background-elevated`, `text-foreground`, `text-muted-foreground`, `border-border`, `text-success`, `text-destructive`, `text-primary`. Никаких `bg-gray-*`, `text-white`, хардкода цветов.
+**Стили:** только CSS-переменные — `bg-background`, `bg-card`, `bg-background-elevated`, `text-foreground`, `text-muted-foreground`, `border-border`, `text-success`, `text-warning`, `text-destructive`, `text-primary`. Никаких `bg-gray-*`, `text-white`, хардкода цветов. Переменные `--success`, `--warning`, `--destructive` маппятся в Tailwind через `@theme inline` в `globals.css`.
 
 **Таблицы:** всегда `overflow-x-auto`.
 

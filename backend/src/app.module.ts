@@ -11,6 +11,7 @@ import { DriverModule } from './infrastructure/driver/driver.module';
 import { CompanyModule } from './infrastructure/company/company.module';
 import { ObjectModule } from './infrastructure/object/object.module';
 import { TransportModule } from './infrastructure/transport/transport.module';
+import { ApplicationModule } from './infrastructure/application/application.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TransportModule } from './infrastructure/transport/transport.module';
     CompanyModule,
     ObjectModule,
     TransportModule,
+    ApplicationModule,
   ],
 })
 export class AppModule {}
