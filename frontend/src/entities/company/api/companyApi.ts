@@ -1,10 +1,11 @@
 import { apiFetch } from '@/shared/api/client'
 import type { Company, CreateCompanyDto, UpdateCompanyDto } from '../model/types'
 
-export function getCompanies(params?: { isActive?: boolean; search?: string }): Promise<Company[]> {
+export function getCompanies(params?: { isActive?: boolean; search?: string; function?: string }): Promise<Company[]> {
   const q = new URLSearchParams()
   if (params?.isActive !== undefined) q.set('isActive', String(params.isActive))
   if (params?.search) q.set('search', params.search)
+  if (params?.function) q.set('function', params.function)
   return apiFetch<Company[]>(`/companies${q.toString() ? `?${q}` : ''}`)
 }
 

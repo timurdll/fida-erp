@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
+import { DatePickerButton } from '@/shared/ui/date-picker-button'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -56,6 +57,7 @@ function AccordionRow({
   onComplete: () => void
   onDeactivate: () => void
 }) {
+  const router = useRouter()
   const { data: detail, isLoading } = useQuery({
     queryKey: applicationKeys.detail(applicationId),
     queryFn: () => getApplicationById(applicationId),
@@ -65,8 +67,15 @@ function AccordionRow({
   return (
     <tr>
       <td colSpan={7} className="bg-background-elevated/50 px-4 pb-4 pt-2">
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={onEdit}>Редактировать</Button>
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => router.push('/plumb/new?applicationId=' + applicationId)}
+          >
+            + Взвешивание
+          </Button>
           <Button size="sm" variant="outline"
             onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
             Завершить досрочно
@@ -92,7 +101,11 @@ function AccordionRow({
               </thead>
               <tbody>
                 {plumbs.map(p => (
-                  <tr key={p.id} className="border-b border-border/50">
+                  <tr
+                    key={p.id}
+                    className="border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors"
+                    onClick={() => router.push('/plumb/view/' + p.id)}
+                  >
                     <td className="py-2 pr-4 text-muted-foreground">{p.id}</td>
                     <td className="py-2 pr-4">{p.transport?.plateNumber ?? '—'}</td>
                     <td className="py-2 pr-4">{p.driver?.fullName ?? '—'}</td>
@@ -102,7 +115,7 @@ function AccordionRow({
                     <td className="py-2 pr-4 text-muted-foreground">
                       {p.secondWeighingAt ? new Date(p.secondWeighingAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
-                    <td className="py-2 pr-4 text-muted-foreground">{p.bsuNumber ?? '—'}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{p.bsu?.name ?? '—'}</td>
                     <td className="py-2 pr-4">{p.volume != null ? p.volume.toFixed(2) : '—'}</td>
                     <td className="py-2"><PlumbStatus gross={p.gross} /></td>
                   </tr>
@@ -184,11 +197,10 @@ export function ApplicationsJournalPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="date"
+        <DatePickerButton
           value={date}
-          onChange={e => setDate(e.target.value)}
-          className="h-10 rounded-md border border-border bg-background-elevated px-3 text-sm text-foreground"
+          onChange={setDate}
+          className="w-[180px]"
         />
         <Button variant="outline" size="sm" onClick={() => setDate(today)}>Сегодня</Button>
         <Select value={materialId?.toString() ?? 'all'} onValueChange={v => setMaterialId(v === 'all' ? undefined : Number(v))}>

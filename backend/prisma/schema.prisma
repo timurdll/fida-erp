@@ -27,11 +27,24 @@ model User {
 }
 
 enum UserRole {
-  ADMIN           // Админ
-  DEPUTY_DIRECTOR // Заместитель директора
-  SALES_HEAD      // Руководитель отдела продаж
-  MANAGER         // Менеджер отдела продаж
-  DISPATCHER      // Диспетчер весовой
+  ADMIN               // Администратор
+  DEPUTY_DIRECTOR     // Заместитель директора
+  SALES_HEAD          // Руководитель отдела продаж
+  MANAGER             // Менеджер отдела продаж
+  DISPATCHER          // Диспетчер весовой
+  OPERATIONAL_DIRECTOR // Операционный директор
+  LOGIST              // Логист
+  LABORANT            // Лаборант
+  FOUNDER             // Учредитель
+  ACCOUNTANT          // Бухгалтер
+  BSU_MASTER          // Мастер БСУ
+  SITE_MANAGER        // Начальник участка
+  OPERATOR            // Оператор
+  TECHNOLOGIST        // Технолог
+  FINANCIAL_DIRECTOR  // Финансовый директор
+  FACTORY_DIRECTOR    // Директор завода
+  SECURITY_HEAD       // Начальник СБ
+  SECURITY_SPECIALIST // Специалист СБ
 }
 
 // ─────────────────────────────────────────────
@@ -50,6 +63,7 @@ model Company {
   updatedAt    DateTime        @updatedAt
 
   objects          Object[]
+  bsus             Bsu[]
   supplierApps     Application[] @relation("AppSupplier")
   customerApps     Application[] @relation("AppCustomer")
   supplierPlumbs   PlumbLog[]    @relation("PlumbSupplier")
@@ -60,6 +74,7 @@ enum CompanyFunction {
   CUSTOMER // Заказчик
   SUPPLIER // Поставщик
   ALL      // Все
+  OWN      // Собственные ТОО компании
 }
 
 enum CompanyType {
@@ -115,6 +130,29 @@ model Construction {
 
   applications Application[]
   plumbLogs    PlumbLog[]
+}
+
+model Bsu {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  companyId Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  plumbLogs PlumbLog[]
+}
+
+model Nomenclature {
+  id        Int      @id @default(autoincrement())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plumbLogs PlumbLog[]
 }
 
 model DeliveryMethod {
@@ -215,19 +253,22 @@ enum ApplicationStatus {
 // ─────────────────────────────────────────────
 
 model PlumbLog {
-  id             Int  @id @default(autoincrement())
-  applicationId  Int?
-  supplierId     Int
-  customerId     Int
-  materialId     Int
-  objectId       Int?
-  transportId    Int?
-  driverId       Int?
-  carrierId      Int?
-  constructionId Int?
+  id                 Int  @id @default(autoincrement())
+  applicationId      Int?
+  supplierId         Int
+  customerId         Int
+  materialId         Int
+  objectId           Int?
+  transportId        Int?
+  driverId           Int?
+  carrierId          Int?
+  constructionId     Int?
+  bsuId              Int?
+  nomenclatureId     Int?
+  originalPlumbLogId Int?
 
   // Данные по весу
-  tare           Int  // Тара (кг)
+  tare           Int? // Тара (кг)
   gross          Int? // Брутто (кг)
   net            Int? // Нетто = Брутто - Тара (хранится для быстрой выборки)
 
@@ -236,14 +277,12 @@ model PlumbLog {
   returnVolume   Float?  // Кубатура возврата
   sealNumber     String? // Номер пломбы
   slumpCone      Float?  // Осадка конуса
-  bsuNumber      String? // Номер БСУ
   deliveryType   String? // Тип перевозки
 
   // Данные для сырья (песок, щебень)
   impurity       Float?  // Сорность (%)
   cleanNet       Int?    // Чистый вес
   documentWeight Int?    // Вес по документам
-  nomenclature   String? // Тип номенклатуры
 
   // Мониторинг взвешиваний
   firstWeighingAt  DateTime?
@@ -256,15 +295,19 @@ model PlumbLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  application    Application?  @relation(fields: [applicationId], references: [id])
-  supplier       Company       @relation("PlumbSupplier", fields: [supplierId], references: [id])
-  customer       Company       @relation("PlumbCustomer", fields: [customerId], references: [id])
-  material       Material      @relation(fields: [materialId], references: [id])
-  object         Object?       @relation(fields: [objectId], references: [id])
-  transport      Transport?    @relation(fields: [transportId], references: [id])
-  driver         Driver?       @relation(fields: [driverId], references: [id])
-  carrier        Carrier?      @relation(fields: [carrierId], references: [id])
-  construction   Construction? @relation(fields: [constructionId], references: [id])
-  firstOperator  User?         @relation("FirstOperator", fields: [firstOperatorId], references: [id])
-  secondOperator User?         @relation("SecondOperator", fields: [secondOperatorId], references: [id])
+  application      Application?  @relation(fields: [applicationId], references: [id])
+  supplier         Company       @relation("PlumbSupplier", fields: [supplierId], references: [id])
+  customer         Company       @relation("PlumbCustomer", fields: [customerId], references: [id])
+  material         Material      @relation(fields: [materialId], references: [id])
+  object           Object?       @relation(fields: [objectId], references: [id])
+  transport        Transport?    @relation(fields: [transportId], references: [id])
+  driver           Driver?       @relation(fields: [driverId], references: [id])
+  carrier          Carrier?      @relation(fields: [carrierId], references: [id])
+  construction     Construction? @relation(fields: [constructionId], references: [id])
+  bsu              Bsu?          @relation(fields: [bsuId], references: [id])
+  nomenclature     Nomenclature? @relation(fields: [nomenclatureId], references: [id])
+  firstOperator    User?         @relation("FirstOperator", fields: [firstOperatorId], references: [id])
+  secondOperator   User?         @relation("SecondOperator", fields: [secondOperatorId], references: [id])
+  originalPlumbLog PlumbLog?     @relation("PlumbReturn", fields: [originalPlumbLogId], references: [id])
+  returnPlumbLogs  PlumbLog[]    @relation("PlumbReturn")
 }

@@ -18,7 +18,8 @@ export interface PlumbLogSummary {
   gross: number | null;
   net: number | null;
   volume: number | null;
-  bsuNumber: string | null;
+  bsuId: number | null;
+  bsu: { id: number; name: string } | null;
   firstWeighingAt: Date | null;
   secondWeighingAt: Date | null;
   transport: { id: number; plateNumber: string } | null;

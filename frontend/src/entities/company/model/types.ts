@@ -1,10 +1,11 @@
-export type CompanyFunction = 'CUSTOMER' | 'SUPPLIER' | 'ALL'
+export type CompanyFunction = 'CUSTOMER' | 'SUPPLIER' | 'ALL' | 'OWN'
 export type CompanyType = 'TOO' | 'IP' | 'CHL'
 
 export const CompanyFunctionLabel: Record<CompanyFunction, string> = {
   CUSTOMER: 'Заказчик',
   SUPPLIER: 'Поставщик',
   ALL: 'Все',
+  OWN: 'Наши ТОО',
 }
 export const CompanyTypeLabel: Record<CompanyType, string> = {
   TOO: 'ТОО',

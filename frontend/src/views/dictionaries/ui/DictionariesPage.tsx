@@ -10,6 +10,8 @@ import { DeliveryMethodsTab } from '@/widgets/dictionaries/ui/DeliveryMethodsTab
 import { CarriersTab } from '@/widgets/dictionaries/ui/CarriersTab'
 import { DriversTab } from '@/widgets/dictionaries/ui/DriversTab'
 import { TransportsTab } from '@/widgets/dictionaries/ui/TransportsTab'
+import { BsuTab } from '@/widgets/dictionaries/ui/BsuTab'
+import { NomenclatureTab } from '@/widgets/dictionaries/ui/NomenclatureTab'
 
 const TABS = [
   { id: 'companies', label: 'Компании', component: CompaniesTab },
@@ -20,6 +22,8 @@ const TABS = [
   { id: 'carriers', label: 'Перевозчик', component: CarriersTab },
   { id: 'drivers', label: 'Водители', component: DriversTab },
   { id: 'transports', label: 'Транспорт', component: TransportsTab },
+  { id: 'bsu', label: 'БСУ', component: BsuTab },
+  { id: 'nomenclatures', label: 'Номенклатура', component: NomenclatureTab },
 ]
 
 export function DictionariesPage() {

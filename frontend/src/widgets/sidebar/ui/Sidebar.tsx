@@ -16,7 +16,7 @@ import { useAuthStore } from '@/shared/store/auth.store'
 const navigation = [
   { name: 'Журнал заявок', href: '/journal', icon: FileText },
   { name: 'План заявок', href: '/plan', icon: Calendar },
-  { name: 'Журнал отвесов', href: '/weighing', icon: Scale },
+  { name: 'Журнал отвесов', href: '/plumb', icon: Scale },
   { name: 'Пользователи', href: '/users', icon: Users },
   { name: 'Справочники', href: '/dictionaries', icon: BookOpen },
 ]

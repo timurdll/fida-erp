@@ -12,6 +12,9 @@ import { CompanyModule } from './infrastructure/company/company.module';
 import { ObjectModule } from './infrastructure/object/object.module';
 import { TransportModule } from './infrastructure/transport/transport.module';
 import { ApplicationModule } from './infrastructure/application/application.module';
+import { BsuModule } from './infrastructure/bsu/bsu.module';
+import { NomenclatureModule } from './infrastructure/nomenclature/nomenclature.module';
+import { PlumbLogModule } from './infrastructure/plumb-log/plumb-log.module';
 
 @Module({
   imports: [
@@ -28,6 +31,9 @@ import { ApplicationModule } from './infrastructure/application/application.modu
     ObjectModule,
     TransportModule,
     ApplicationModule,
+    BsuModule,
+    NomenclatureModule,
+    PlumbLogModule,
   ],
 })
 export class AppModule {}

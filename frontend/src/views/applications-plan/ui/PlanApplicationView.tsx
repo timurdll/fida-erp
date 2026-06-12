@@ -210,7 +210,11 @@ export function PlanApplicationView({ id }: Props) {
                   Деактивировать
                 </Button>
               )}
-              <Button className="w-full" variant="outline" disabled title="Модуль отвесов в разработке">
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => router.push('/plumb/new?applicationId=' + id)}
+              >
                 + Добавить взвешивание
               </Button>
             </div>
@@ -239,7 +243,11 @@ export function PlanApplicationView({ id }: Props) {
               </thead>
               <tbody>
                 {plumbs.map((p, i) => (
-                  <tr key={p.id} className={`border-b border-border ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}>
+                  <tr
+                    key={p.id}
+                    className={`border-b border-border cursor-pointer hover:bg-primary/5 transition-colors ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                    onClick={() => router.push('/plumb/view/' + p.id)}
+                  >
                     <td className="px-4 py-3 text-muted-foreground">{p.id}</td>
                     <td className="px-4 py-3">{p.transport?.plateNumber ?? '—'}</td>
                     <td className="px-4 py-3">{p.driver?.fullName ?? '—'}</td>
@@ -249,9 +257,9 @@ export function PlanApplicationView({ id }: Props) {
                     <td className="px-4 py-3 text-muted-foreground">
                       {p.secondWeighingAt ? new Date(p.secondWeighingAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.bsuNumber ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{p.bsu?.name ?? '—'}</td>
                     <td className="px-4 py-3">{p.volume != null ? p.volume.toFixed(2) : '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.tare}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{p.tare ?? '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.gross ?? '—'}</td>
                     <td className="px-4 py-3">{p.net != null ? p.net : '—'}</td>
                   </tr>

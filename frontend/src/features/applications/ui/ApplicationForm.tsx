@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import { Building2, Truck, Wrench, CalendarIcon, Clock } from 'lucide-react'
@@ -121,9 +121,13 @@ export function ApplicationForm({
   })
 
   const customerId = watch('customerId')
+  const prevCustomerIdRef = useRef<number | undefined>(customerId)
 
   useEffect(() => {
-    setValue('objectId', undefined as any)
+    if (prevCustomerIdRef.current !== customerId) {
+      setValue('objectId', undefined as any)
+      prevCustomerIdRef.current = customerId
+    }
   }, [customerId, setValue])
 
   // ── queries ──────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { DatePickerButton } from '@/shared/ui/date-picker-button'
 import {
   Popover,
   PopoverContent,
@@ -526,11 +527,10 @@ export function ApplicationsPlanPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {viewMode === 'list' && (
-            <input
-              type="date"
+            <DatePickerButton
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-10 rounded-md border border-border bg-background-elevated px-3 text-sm text-foreground"
+              onChange={setDate}
+              className="w-[180px]"
             />
           )}
           <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">

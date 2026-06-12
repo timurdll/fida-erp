@@ -1,0 +1,588 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useForm, Controller } from 'react-hook-form'
+import { toast } from 'sonner'
+import { ArrowLeft, Printer, Pencil, RotateCcw, Trash2, Save } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { Skeleton } from '@/shared/ui/skeleton'
+import { plumbLogKeys } from '@/entities/plumb-log/model/queryKeys'
+import {
+  getPlumbLogById,
+  updatePlumbLog,
+  weighTare,
+  weighGross,
+  createReturn,
+  deactivatePlumbLog,
+} from '@/entities/plumb-log/api/plumbLogApi'
+import { getCompanies } from '@/entities/company/api/companyApi'
+import { getMaterials } from '@/entities/material/api/materialApi'
+import { getTransports } from '@/entities/transport/api/transportApi'
+import { getDrivers } from '@/entities/driver/api/driverApi'
+import { getBsuList } from '@/entities/bsu/api/bsuApi'
+import { getConstructions } from '@/entities/construction/api/constructionApi'
+import { getNomenclatures } from '@/entities/nomenclature/api/nomenclatureApi'
+import type { CreatePlumbLogDto, PlumbLog } from '@/entities/plumb-log/model/types'
+
+interface Props { id: number }
+
+const fmtDt = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit', month: '2-digit', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+})
+
+function fmt(iso: string | null) {
+  return iso ? fmtDt.format(new Date(iso)) : '—'
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{children}</h3>
+}
+
+function ReadonlyVal({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <div className="h-9 rounded-md border border-border bg-muted/20 px-3 flex items-center text-sm text-foreground">
+        {value || '—'}
+      </div>
+    </div>
+  )
+}
+
+export function PlumbLogView({ id }: Props) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const [tareInput, setTareInput] = useState('')
+  const [grossInput, setGrossInput] = useState('')
+
+  const { data: plumbLog, isLoading } = useQuery({
+    queryKey: plumbLogKeys.detail(id),
+    queryFn: () => getPlumbLogById(id),
+    enabled: !!id,
+  })
+
+  const isConcrete = plumbLog?.applicationId !== null && plumbLog?.applicationId !== undefined
+
+  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery({
+    queryKey: ['companies', { isActive: true }],
+    queryFn: () => getCompanies({ isActive: true }),
+    staleTime: 60_000,
+  })
+
+  // В режиме просмотра — все активные компании (без фильтра по function)
+  const customers = suppliers
+
+  const { data: materials = [], isLoading: materialsLoading } = useQuery({
+    queryKey: ['materials', { isActive: true }],
+    queryFn: () => getMaterials({ isActive: true }),
+    staleTime: 60_000,
+  })
+
+  const { data: transports = [], isLoading: transportsLoading } = useQuery({
+    queryKey: ['transports', { isActive: true }],
+    queryFn: () => getTransports({ isActive: true }),
+    staleTime: 60_000,
+  })
+
+  const { data: drivers = [], isLoading: driversLoading } = useQuery({
+    queryKey: ['drivers', { isActive: true }],
+    queryFn: () => getDrivers({ isActive: true }),
+    staleTime: 60_000,
+  })
+
+  const { data: bsuList = [], isLoading: bsuLoading } = useQuery({
+    queryKey: ['bsu', { isActive: true, companyId: plumbLog?.supplierId }],
+    queryFn: () => getBsuList({ isActive: true, companyId: plumbLog?.supplierId }),
+    enabled: isConcrete && !!plumbLog?.supplierId,
+    staleTime: 60_000,
+  })
+
+  const { data: constructions = [], isLoading: constructionsLoading } = useQuery({
+    queryKey: ['constructions', { isActive: true }],
+    queryFn: () => getConstructions({ isActive: true }),
+    staleTime: 60_000,
+    enabled: isConcrete,
+  })
+
+  const { data: nomenclatures = [], isLoading: nomenclaturesLoading } = useQuery({
+    queryKey: ['nomenclatures', { isActive: true }],
+    queryFn: () => getNomenclatures({ isActive: true }),
+    staleTime: 60_000,
+    enabled: !isConcrete,
+  })
+
+  const { control, handleSubmit } = useForm<Partial<CreatePlumbLogDto>>({
+    values: plumbLog ? {
+      supplierId: plumbLog.supplierId,
+      customerId: plumbLog.customerId,
+      materialId: plumbLog.materialId,
+      transportId: plumbLog.transportId ?? undefined,
+      driverId: plumbLog.driverId ?? undefined,
+      bsuId: plumbLog.bsuId ?? undefined,
+      constructionId: plumbLog.constructionId ?? undefined,
+      nomenclatureId: plumbLog.nomenclatureId ?? undefined,
+      volume: plumbLog.volume ?? undefined,
+      returnVolume: plumbLog.returnVolume ?? undefined,
+      sealNumber: plumbLog.sealNumber ?? undefined,
+      slumpCone: plumbLog.slumpCone ?? undefined,
+      deliveryType: plumbLog.deliveryType ?? undefined,
+      impurity: plumbLog.impurity ?? undefined,
+      cleanNet: plumbLog.cleanNet ?? undefined,
+      documentWeight: plumbLog.documentWeight ?? undefined,
+    } : {},
+  })
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: plumbLogKeys.detail(id) })
+    queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() })
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: (data: Partial<CreatePlumbLogDto>) => updatePlumbLog(id, data),
+    onSuccess: () => { invalidate(); toast.success('Сохранено') },
+    onError: () => toast.error('Ошибка сохранения'),
+  })
+
+  const weighTareMutation = useMutation({
+    mutationFn: () => weighTare(id, Number(tareInput)),
+    onSuccess: () => { invalidate(); toast.success('Тара взвешена') },
+    onError: () => toast.error('Ошибка взвешивания тары'),
+  })
+
+  const weighGrossMutation = useMutation({
+    mutationFn: () => weighGross(id, Number(grossInput)),
+    onSuccess: () => { invalidate(); toast.success('Брутто взвешено') },
+    onError: () => toast.error('Ошибка взвешивания'),
+  })
+
+  const returnMutation = useMutation({
+    mutationFn: () => createReturn(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() })
+      toast.success('Возврат создан')
+      router.push('/plumb/view/' + data.id)
+    },
+    onError: () => toast.error('Ошибка создания возврата'),
+  })
+
+  const deactivateMutation = useMutation({
+    mutationFn: () => deactivatePlumbLog(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() })
+      toast.success('Отвес деактивирован')
+      router.push('/plumb')
+    },
+  })
+
+  const selectedTransport = transports.find((t) => t.id === plumbLog?.transportId)
+
+  // Ждём загрузки ВСЕХ нужных списков, чтобы Select сразу отображал labels
+  const concreteLists = isConcrete ? bsuLoading || constructionsLoading : false
+  const rawLists = !isConcrete && !!plumbLog ? nomenclaturesLoading : false
+  const listsLoading = suppliersLoading || materialsLoading || transportsLoading || driversLoading ||
+    concreteLists || rawLists
+
+  if (isLoading || !plumbLog || listsLoading) {
+    return (
+      <div className="min-h-screen p-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen p-6">
+      <div className="mb-6">
+        <button
+          onClick={() => router.push('/plumb')}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Журнал отвесов
+        </button>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">
+              Отвес ID: {id}
+              {plumbLog.isReturn && (
+                <span className="ml-2 text-sm font-normal text-warning bg-warning/10 rounded px-2 py-0.5">Возврат</span>
+              )}
+              {!plumbLog.isActive && (
+                <span className="ml-2 text-sm font-normal text-destructive bg-destructive/10 rounded px-2 py-0.5">Неактивен</span>
+              )}
+            </h1>
+            <p className="mt-1 text-muted-foreground text-sm">{fmt(plumbLog.firstWeighingAt)}</p>
+          </div>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+            onClick={handleSubmit((data) => saveMutation.mutate(data))}
+            disabled={saveMutation.isPending}
+          >
+            <Save className="h-4 w-4" />
+            {saveMutation.isPending ? 'Сохранение...' : 'Сохранить данные'}
+          </Button>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit((data) => saveMutation.mutate(data))}>
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="grid grid-cols-3 gap-8">
+            {/* Колонка 1: Общие данные */}
+            <div className="space-y-4">
+              <SectionTitle>Общие данные</SectionTitle>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Поставщик</Label>
+                <Controller
+                  name="supplierId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Заказчик</Label>
+                <Controller
+                  name="customerId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Материал</Label>
+                <Controller
+                  name="materialId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {materials.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              {plumbLog.object && (
+                <ReadonlyVal label="Объект" value={plumbLog.object.name} />
+              )}
+
+              {isConcrete ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Объём (м³)</Label>
+                    <Controller
+                      name="volume"
+                      control={control}
+                      render={({ field }) => (
+                        <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Объём возврата (м³)</Label>
+                    <Controller name="returnVolume" control={control}
+                      render={({ field }) => (
+                        <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Номер пломбы</Label>
+                    <Controller name="sealNumber" control={control}
+                      render={({ field }) => (
+                        <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value || undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Осадка конуса (см)</Label>
+                    <Controller name="slumpCone" control={control}
+                      render={({ field }) => (
+                        <Input type="number" step="0.1" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Тип перевозки</Label>
+                    <Controller name="deliveryType" control={control}
+                      render={({ field }) => (
+                        <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value || undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Конструкция</Label>
+                    <Controller name="constructionId" control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                          <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбрана" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Не выбрана</SelectItem>
+                            {constructions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Номенклатура</Label>
+                    <Controller name="nomenclatureId" control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                          <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбрана" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Не выбрана</SelectItem>
+                            {nomenclatures.map((n) => <SelectItem key={n.id} value={String(n.id)}>{n.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Сорность (%)</Label>
+                    <Controller name="impurity" control={control}
+                      render={({ field }) => (
+                        <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Чистый нетто (кг)</Label>
+                    <Controller name="cleanNet" control={control}
+                      render={({ field }) => (
+                        <Input type="number" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Вес по документам (кг)</Label>
+                    <Controller name="documentWeight" control={control}
+                      render={({ field }) => (
+                        <Input type="number" className="bg-background-elevated border-border h-9"
+                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                      )} />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Колонка 2: Транспорт */}
+            <div className="space-y-4">
+              <SectionTitle>Данные по транспорту</SectionTitle>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Водитель</Label>
+                <Controller name="driverId" control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Не выбран</SelectItem>
+                        {drivers.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.fullName}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )} />
+              </div>
+
+              <ReadonlyVal label="Перевозчик" value={selectedTransport?.carrier?.name ?? plumbLog.carrier?.name ?? '—'} />
+
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Гос. номер</Label>
+                <Controller name="transportId" control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Выберите транспорт" /></SelectTrigger>
+                      <SelectContent>
+                        {transports.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.plateNumber}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )} />
+              </div>
+
+              {isConcrete && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm text-muted-foreground">БСУ</Label>
+                  <Controller name="bsuId" control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                        <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Не выбран</SelectItem>
+                          {bsuList.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                </div>
+              )}
+            </div>
+
+            {/* Колонка 3: Мониторинг + Вес */}
+            <div className="space-y-6">
+              <div>
+                <SectionTitle>Данные по мониторингу</SectionTitle>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <ReadonlyVal label="Первое взвешивание" value={fmt(plumbLog.firstWeighingAt)} />
+                    <ReadonlyVal label="Оператор" value={plumbLog.firstOperator?.fullName ?? '—'} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <ReadonlyVal label="Второе взвешивание" value={fmt(plumbLog.secondWeighingAt)} />
+                    <ReadonlyVal label="Оператор" value={plumbLog.secondOperator?.fullName ?? '—'} />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <SectionTitle>Данные по весу</SectionTitle>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Тара, кг</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        className="bg-background-elevated border-border h-9 flex-1"
+                        placeholder={plumbLog.tare != null ? String(plumbLog.tare) : '0'}
+                        value={tareInput}
+                        onChange={(e) => setTareInput(e.target.value)}
+                        disabled={plumbLog.tare !== null}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 whitespace-nowrap"
+                        disabled={plumbLog.tare !== null || !tareInput || weighTareMutation.isPending}
+                        onClick={() => weighTareMutation.mutate()}
+                      >
+                        {plumbLog.tare !== null ? '✓ Взвешено' : 'Взвесить'}
+                      </Button>
+                    </div>
+                    {plumbLog.tare !== null && (
+                      <p className="text-xs text-muted-foreground">{plumbLog.tare.toLocaleString('ru-RU')} кг</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Брутто, кг</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        className="bg-background-elevated border-border h-9 flex-1"
+                        placeholder={plumbLog.gross != null ? String(plumbLog.gross) : '0'}
+                        value={grossInput}
+                        onChange={(e) => setGrossInput(e.target.value)}
+                        disabled={plumbLog.gross !== null}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 whitespace-nowrap"
+                        disabled={plumbLog.gross !== null || !grossInput || weighGrossMutation.isPending}
+                        onClick={() => weighGrossMutation.mutate()}
+                      >
+                        {plumbLog.gross !== null ? '✓ Взвешено' : 'Взвесить'}
+                      </Button>
+                    </div>
+                    {plumbLog.gross !== null && (
+                      <p className="text-xs text-muted-foreground">{plumbLog.gross.toLocaleString('ru-RU')} кг</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">Нетто, кг</Label>
+                    <div className="h-10 rounded-md border border-primary/20 bg-primary/10 px-4 flex items-center">
+                      <span className="text-base font-semibold text-primary">
+                        {plumbLog.net != null ? plumbLog.net.toLocaleString('ru-RU') : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {plumbLog.cleanNet != null && (
+                    <ReadonlyVal label="Чистый вес, кг" value={plumbLog.cleanNet.toLocaleString('ru-RU')} />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      {/* Action bar */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => window.print()}
+        >
+          <Printer className="h-4 w-4" />
+          Распечатать ТТН
+        </Button>
+        <Button variant="outline" onClick={() => router.push('/plumb')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Вернуться назад
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={handleSubmit((data) => saveMutation.mutate(data))}
+          disabled={saveMutation.isPending}
+        >
+          <Pencil className="h-4 w-4" />
+          Редактировать
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          disabled={returnMutation.isPending}
+          onClick={() => {
+            if (window.confirm('Создать возврат для этого отвеса?')) {
+              returnMutation.mutate()
+            }
+          }}
+        >
+          <RotateCcw className="h-4 w-4" />
+          Возврат
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
+          disabled={deactivateMutation.isPending}
+          onClick={() => {
+            if (window.confirm('Деактивировать отвес? Это действие нельзя отменить.')) {
+              deactivateMutation.mutate()
+            }
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+          Удалить отвес
+        </Button>
+      </div>
+    </div>
+  )
+}
