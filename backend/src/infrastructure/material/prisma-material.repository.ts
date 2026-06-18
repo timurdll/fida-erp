@@ -26,6 +26,8 @@ export class PrismaMaterialRepository implements IMaterialRepository {
       where: {
         ...(filters.isActive !== undefined && { isActive: filters.isActive }),
         ...(filters.search && { name: { contains: filters.search, mode: 'insensitive' } }),
+        ...(filters.excludeType && { type: { not: filters.excludeType } }),
+        ...(filters.filterType && { type: filters.filterType }),
       },
       orderBy: { name: 'asc' },
     });

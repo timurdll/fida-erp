@@ -202,6 +202,10 @@ export class PrismaApplicationRepository implements IApplicationRepository {
     return this.map(r, false);
   }
 
+  async updateStatus(id: number, status: ApplicationStatus): Promise<void> {
+    await this.prisma.application.update({ where: { id }, data: { status } });
+  }
+
   async deactivate(id: number): Promise<ApplicationEntity> {
     const r = await this.prisma.application.update({
       where: { id },

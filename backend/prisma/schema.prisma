@@ -284,6 +284,8 @@ model PlumbLog {
   cleanNet       Int?    // Чистый вес
   documentWeight Int?    // Вес по документам
 
+  note           String? // Примечание (для отчётов)
+
   // Мониторинг взвешиваний
   firstWeighingAt  DateTime?
   firstOperatorId  Int?

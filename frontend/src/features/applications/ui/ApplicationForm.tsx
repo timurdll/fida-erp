@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Building2, Truck, Wrench, CalendarIcon, Clock } from 'lucide-react'
 import { Label } from '@/shared/ui/label'
 import { Input } from '@/shared/ui/input'
@@ -21,22 +22,21 @@ import {
   PopoverTrigger,
 } from '@/shared/ui/popover'
 import { Calendar } from '@/shared/ui/calendar'
+import { SearchableSelect, type SearchableOption } from '@/shared/ui/SearchableSelect'
+import { CreateInlineDialog } from '@/shared/ui/create-inline-dialog'
 import { cn } from '@/shared/lib/utils'
-import { getCompanies } from '@/entities/company/api/companyApi'
-import { getObjects } from '@/entities/object/api/objectApi'
+import { getCompanies, createCompany } from '@/entities/company/api/companyApi'
+import { getObjects, createObject } from '@/entities/object/api/objectApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { getConstructions } from '@/entities/construction/api/constructionApi'
 import { getDeliveryMethods } from '@/entities/delivery-method/api/deliveryMethodApi'
+import type { Company, CreateCompanyDto, CompanyFunction, CompanyType } from '@/entities/company/model/types'
+import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model/types'
+import type { ObjectItem, CreateObjectDto } from '@/entities/object/model/types'
 import type { CreateApplicationDto } from '@/entities/application/model/types'
+import { toLocalDateString as toLocalDateStr } from '@/shared/utils/date'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 function parseDateStr(s: string): Date {
   const [y, m, d] = s.split('-').map(Number)
@@ -86,6 +86,164 @@ function UnitInput({
   )
 }
 
+// ─── inline create forms ───────────────────────────────────────────────────────
+
+const COMPANY_FUNCTIONS: CompanyFunction[] = ['CUSTOMER', 'SUPPLIER', 'ALL', 'OWN']
+const COMPANY_TYPES: CompanyType[] = ['TOO', 'IP', 'CHL']
+
+function CreateCustomerForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (c: Company) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, control, formState: { errors } } = useForm<CreateCompanyDto>({
+    defaultValues: { function: 'CUSTOMER', type: 'TOO' },
+  })
+
+  const mutation = useMutation({
+    mutationFn: (dto: CreateCompanyDto) => createCompany(dto),
+    onSuccess: (company) => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      toast.success('Заказчик создан')
+      onCreated(company)
+    },
+    onError: () => toast.error('Ошибка при создании заказчика'),
+  })
+
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-foreground text-sm">Наименование <span className="text-destructive">*</span></Label>
+        <Input
+          className="bg-background-elevated border-border h-9"
+          placeholder="Название компании"
+          {...register('name', { required: true })}
+        />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-foreground text-sm">Функция</Label>
+          <Controller
+            name="function"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPANY_FUNCTIONS.map((f) => (
+                    <SelectItem key={f} value={f}>{CompanyFunctionLabel[f]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-foreground text-sm">Тип</Label>
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPANY_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{CompanyTypeLabel[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-foreground text-sm">БИН</Label>
+          <Input className="bg-background-elevated border-border h-9" {...register('bin')} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-foreground text-sm">Телефон</Label>
+          <Input className="bg-background-elevated border-border h-9" {...register('contactPhone')} />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateObjectForm({
+  customerId,
+  customerName,
+  onCreated,
+  onCancel,
+}: {
+  customerId: number
+  customerName: string
+  onCreated: (o: ObjectItem) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, formState: { errors } } = useForm<{ name: string; address?: string }>()
+
+  const mutation = useMutation({
+    mutationFn: (dto: CreateObjectDto) => createObject(dto),
+    onSuccess: (object) => {
+      queryClient.invalidateQueries({ queryKey: ['objects'] })
+      toast.success('Объект создан')
+      onCreated(object)
+    },
+    onError: () => toast.error('Ошибка при создании объекта'),
+  })
+
+  return (
+    <form
+      onSubmit={handleSubmit((d) => mutation.mutate({ ...d, companyId: customerId }))}
+      className="space-y-4"
+    >
+      <div className="space-y-1.5">
+        <Label className="text-foreground text-sm">Наименование <span className="text-destructive">*</span></Label>
+        <Input
+          className="bg-background-elevated border-border h-9"
+          placeholder="Название объекта"
+          {...register('name', { required: true })}
+        />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-foreground text-sm">Заказчик</Label>
+        <div className="h-9 rounded-md border border-border bg-muted/20 px-3 flex items-center text-sm text-muted-foreground">
+          {customerName}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-foreground text-sm">Адрес</Label>
+        <Input className="bg-background-elevated border-border h-9" {...register('address')} />
+      </div>
+
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 // ─── types ────────────────────────────────────────────────────────────────────
 
 interface ApplicationFormProps {
@@ -120,6 +278,10 @@ export function ApplicationForm({
     },
   })
 
+  const queryClient = useQueryClient()
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false)
+  const [showCreateObject, setShowCreateObject] = useState(false)
+
   const customerId = watch('customerId')
   const prevCustomerIdRef = useRef<number | undefined>(customerId)
 
@@ -132,27 +294,39 @@ export function ApplicationForm({
 
   // ── queries ──────────────────────────────────────────────────────────────
 
+  // Поставщик — только своё юрлицо (OWN)
   const { data: suppliers = [] } = useQuery({
-    queryKey: ['companies', { function: 'SUPPLIER', isActive: true }],
-    queryFn: () => getCompanies({ isActive: true }),
+    queryKey: ['companies', { function: 'OWN', isActive: true }],
+    queryFn: () => getCompanies({ isActive: true, function: 'OWN' }),
     staleTime: 60_000,
   })
+  // Заказчик — все компании (для лейбла выбранного значения)
   const { data: customers = [] } = useQuery({
     queryKey: ['companies', { isActive: true }],
     queryFn: () => getCompanies({ isActive: true }),
     staleTime: 60_000,
   })
-  const { data: objects = [] } = useQuery({
-    queryKey: ['objects', { companyId: customerId, isActive: true }],
-    queryFn: () => getObjects({ companyId: customerId, isActive: true }),
-    enabled: !!customerId,
-    staleTime: 30_000,
-  })
+  // Материал — без типа OTHER (в заявках только бетон/сырьё)
   const { data: materials = [] } = useQuery({
-    queryKey: ['materials', { isActive: true }],
-    queryFn: () => getMaterials({ isActive: true }),
+    queryKey: ['materials', { isActive: true, excludeType: 'OTHER' }],
+    queryFn: () => getMaterials({ isActive: true, excludeType: 'OTHER' }),
     staleTime: 60_000,
   })
+
+  const customerName = customers.find((c) => c.id === customerId)?.name ?? ''
+
+  const loadCustomers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCompanies({ isActive: true, search }).then((list) => list.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+  const loadObjects = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      customerId
+        ? getObjects({ companyId: customerId, isActive: true, search }).then((list) => list.map((o) => ({ id: o.id, label: o.name })))
+        : Promise.resolve([]),
+    [customerId],
+  )
   const { data: constructions = [] } = useQuery({
     queryKey: ['constructions', { isActive: true }],
     queryFn: () => getConstructions({ isActive: true }),
@@ -167,6 +341,7 @@ export function ApplicationForm({
   // ── render ───────────────────────────────────────────────────────────────
 
   return (
+    <>
     <form onSubmit={handleSubmit(onSubmit)}>
       {/* Sections share one card, divided by border-b */}
       <div className="rounded-lg border border-border bg-card divide-y divide-border">
@@ -211,16 +386,14 @@ export function ApplicationForm({
                 control={control}
                 rules={{ required: true }}
                 render={({ field }) => (
-                  <Select value={field.value?.toString()} onValueChange={(v) => field.onChange(Number(v))}>
-                    <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                      <SelectValue placeholder="Выберите заказчика" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={field.value}
+                    onChange={(id) => field.onChange(id)}
+                    loadOptions={loadCustomers}
+                    placeholder="Выберите заказчика"
+                    onCreateNew={() => setShowCreateCustomer(true)}
+                    createLabel="Добавить заказчика"
+                  />
                 )}
               />
               {errors.customerId && <p className="text-xs text-destructive">Обязательное поле</p>}
@@ -236,20 +409,15 @@ export function ApplicationForm({
                 control={control}
                 rules={{ required: true }}
                 render={({ field }) => (
-                  <Select
+                  <SearchableSelect
+                    value={field.value}
+                    onChange={(id) => field.onChange(id)}
+                    loadOptions={loadObjects}
                     disabled={!customerId}
-                    value={field.value?.toString()}
-                    onValueChange={(v) => field.onChange(Number(v))}
-                  >
-                    <SelectTrigger className={cn('w-full bg-background-elevated border-border h-9', !customerId && 'opacity-50')}>
-                      <SelectValue placeholder={!customerId ? 'Сначала выберите заказчика' : 'Выберите объект'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {objects.map((o) => (
-                        <SelectItem key={o.id} value={o.id.toString()}>{o.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={!customerId ? 'Сначала выберите заказчика' : 'Выберите объект'}
+                    onCreateNew={customerId ? () => setShowCreateObject(true) : undefined}
+                    createLabel="Добавить объект"
+                  />
                 )}
               />
               {!customerId
@@ -507,5 +675,40 @@ export function ApplicationForm({
         </Button>
       </div>
     </form>
+
+    <CreateInlineDialog
+      open={showCreateCustomer}
+      onOpenChange={setShowCreateCustomer}
+      title="Новый заказчик"
+    >
+      <CreateCustomerForm
+        onCreated={(company) => {
+          setValue('customerId', company.id)
+          setShowCreateCustomer(false)
+        }}
+        onCancel={() => setShowCreateCustomer(false)}
+      />
+    </CreateInlineDialog>
+
+    {customerId && (
+      <CreateInlineDialog
+        open={showCreateObject}
+        onOpenChange={setShowCreateObject}
+        title="Новый объект"
+      >
+        <CreateObjectForm
+          customerId={customerId}
+          customerName={customerName}
+          onCreated={(object) => {
+            queryClient.invalidateQueries({ queryKey: ['objects'] })
+            queryClient.invalidateQueries({ queryKey: ['objects', customerId] })
+            setValue('objectId', object.id)
+            setShowCreateObject(false)
+          }}
+          onCancel={() => setShowCreateObject(false)}
+        />
+      </CreateInlineDialog>
+    )}
+    </>
   )
 }

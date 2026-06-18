@@ -5,18 +5,10 @@ import { Button } from '@/shared/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Calendar } from '@/shared/ui/calendar'
 import { cn } from '@/shared/lib/utils'
-
-function parseDateStr(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+import {
+  toLocalDateString as toLocalDateStr,
+  parseLocalDateString as parseDateStr,
+} from '@/shared/utils/date'
 
 function formatDisplayDate(d: Date): string {
   return d.toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })

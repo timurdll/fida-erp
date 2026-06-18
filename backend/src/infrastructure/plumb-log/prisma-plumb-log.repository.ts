@@ -40,6 +40,8 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
     if (filters.customerId !== undefined) where.customerId = filters.customerId;
     if (filters.materialId !== undefined) where.materialId = filters.materialId;
     if (filters.applicationId !== undefined) where.applicationId = filters.applicationId;
+    // standalone=true — только отвесы сырья (без привязки к заявке)
+    if (filters.standalone === true) where.applicationId = null;
 
     if (filters.dateFrom || filters.dateTo) {
       where.firstWeighingAt = {};

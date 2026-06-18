@@ -28,6 +28,7 @@ export class PrismaCompanyRepository implements ICompanyRepository {
       where: {
         ...(filters.isActive !== undefined && { isActive: filters.isActive }),
         ...(filters.search && { name: { contains: filters.search, mode: 'insensitive' } }),
+        ...(filters.function && { function: filters.function }),
       },
       orderBy: { name: 'asc' },
     });

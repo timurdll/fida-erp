@@ -13,6 +13,7 @@ import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationPr
 
 interface Props {
   id: number
+  backDate?: string
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -24,9 +25,13 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-export function PlanApplicationView({ id }: Props) {
+export function PlanApplicationView({ id, backDate }: Props) {
   const router = useRouter()
   const queryClient = useQueryClient()
+
+  const backHref = backDate ? `/plan?date=${backDate}` : '/plan'
+  // URL текущей карточки — чтобы из отвеса можно было вернуться сюда (с датой, если есть)
+  const selfUrl = backDate ? `/plan/view/${id}?backDate=${backDate}` : `/plan/view/${id}`
 
   const { data: app, isLoading } = useQuery({
     queryKey: applicationKeys.detail(id),
@@ -68,7 +73,7 @@ export function PlanApplicationView({ id }: Props) {
     return (
       <div className="min-h-screen p-6">
         <p className="text-muted-foreground">Заявка не найдена</p>
-        <Button variant="ghost" onClick={() => router.push('/plan')} className="mt-4">
+        <Button variant="ghost" onClick={() => router.push(backHref)} className="mt-4">
           <ArrowLeft className="mr-2 h-4 w-4" />Вернуться к плану
         </Button>
       </div>
@@ -81,7 +86,7 @@ export function PlanApplicationView({ id }: Props) {
     <div className="min-h-screen p-6">
       {/* Breadcrumb */}
       <button
-        onClick={() => router.push('/plan')}
+        onClick={() => router.push(backHref)}
         className="mb-4 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -178,15 +183,26 @@ export function PlanApplicationView({ id }: Props) {
             <h2 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Действия
             </h2>
-            <div className="space-y-2">
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => router.push('/plan/edit/' + id)}
-              >
-                Редактировать заявку
-              </Button>
-              {app.status !== 'COMPLETED' && app.status !== 'CANCELLED' && (
+            {app.status === 'COMPLETED' ? (
+              <p className="text-sm text-success">Заявка выполнена</p>
+            ) : app.status === 'CANCELLED' ? (
+              <p className="text-sm text-destructive">Заявка деактивирована</p>
+            ) : (
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => router.push('/plumb/new?applicationId=' + id)}
+                >
+                  + Добавить взвешивание
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => router.push('/plan/edit/' + id)}
+                >
+                  Редактировать заявку
+                </Button>
                 <Button
                   className="w-full"
                   variant="outline"
@@ -197,8 +213,6 @@ export function PlanApplicationView({ id }: Props) {
                 >
                   Завершить досрочно
                 </Button>
-              )}
-              {app.isActive && (
                 <Button
                   className="w-full"
                   variant="destructive"
@@ -209,15 +223,8 @@ export function PlanApplicationView({ id }: Props) {
                 >
                   Деактивировать
                 </Button>
-              )}
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => router.push('/plumb/new?applicationId=' + id)}
-              >
-                + Добавить взвешивание
-              </Button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -246,7 +253,7 @@ export function PlanApplicationView({ id }: Props) {
                   <tr
                     key={p.id}
                     className={`border-b border-border cursor-pointer hover:bg-primary/5 transition-colors ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
-                    onClick={() => router.push('/plumb/view/' + p.id)}
+                    onClick={() => router.push(`/plumb/view/${p.id}?backUrl=${encodeURIComponent(selfUrl)}&backLabel=${encodeURIComponent('Заявка №' + id)}`)}
                   >
                     <td className="px-4 py-3 text-muted-foreground">{p.id}</td>
                     <td className="px-4 py-3">{p.transport?.plateNumber ?? '—'}</td>

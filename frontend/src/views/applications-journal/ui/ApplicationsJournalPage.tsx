@@ -25,6 +25,7 @@ import {
 import type { Application, PlumbLogSummary } from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { getMaterials } from '@/entities/material/api/materialApi'
+import { toLocalDateString } from '@/shared/utils/date'
 
 function StatusDot({ status }: { status: Application['status'] }) {
   const colors: Record<Application['status'], string> = {
@@ -104,7 +105,7 @@ function AccordionRow({
                   <tr
                     key={p.id}
                     className="border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors"
-                    onClick={() => router.push('/plumb/view/' + p.id)}
+                    onClick={() => router.push(`/plumb/view/${p.id}?backUrl=${encodeURIComponent('/journal')}&backLabel=${encodeURIComponent('Журнал заявок')}`)}
                   >
                     <td className="py-2 pr-4 text-muted-foreground">{p.id}</td>
                     <td className="py-2 pr-4">{p.transport?.plateNumber ?? '—'}</td>
@@ -132,7 +133,7 @@ function AccordionRow({
 export function ApplicationsJournalPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateString(new Date())
   const [date, setDate] = useState(today)
   const [materialId, setMaterialId] = useState<number | undefined>()
   const [expandedId, setExpandedId] = useState<number | null>(null)

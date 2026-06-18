@@ -8,17 +8,28 @@ import {
   Scale,
   Users,
   BookOpen,
+  BarChart2,
   LogOut,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { useAuthStore } from '@/shared/store/auth.store'
+import type { UserRole } from '@/shared/types/user'
 
-const navigation = [
+const REPORT_ROLES: UserRole[] = [
+  'ADMIN',
+  'DEPUTY_DIRECTOR',
+  'ACCOUNTANT',
+  'FINANCIAL_DIRECTOR',
+  'FOUNDER',
+]
+
+const navigation: { name: string; href: string; icon: React.ElementType; allowedRoles?: UserRole[] }[] = [
   { name: 'Журнал заявок', href: '/journal', icon: FileText },
   { name: 'План заявок', href: '/plan', icon: Calendar },
   { name: 'Журнал отвесов', href: '/plumb', icon: Scale },
   { name: 'Пользователи', href: '/users', icon: Users },
   { name: 'Справочники', href: '/dictionaries', icon: BookOpen },
+  { name: 'Отчёты', href: '/reports', icon: BarChart2, allowedRoles: REPORT_ROLES },
 ]
 
 export function Sidebar() {
@@ -40,7 +51,9 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4">
           <ul className="space-y-1">
-            {navigation.map((item) => {
+            {navigation.filter((item) =>
+              !item.allowedRoles || (user?.role && item.allowedRoles.includes(user.role as UserRole))
+            ).map((item) => {
               const isActive = pathname?.startsWith(item.href) ?? false
               return (
                 <li key={item.name}>

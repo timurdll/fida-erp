@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import {
   Command,
@@ -25,6 +25,9 @@ interface SearchableSelectProps {
   loadOptions: (search: string) => Promise<SearchableOption[]>
   placeholder?: string
   disabled?: boolean
+  /** Если задан — внизу списка появляется кнопка «+ Добавить новый» */
+  onCreateNew?: () => void
+  createLabel?: string
 }
 
 export function SearchableSelect({
@@ -33,6 +36,8 @@ export function SearchableSelect({
   loadOptions,
   placeholder = 'Выберите...',
   disabled,
+  onCreateNew,
+  createLabel = 'Добавить новый',
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -127,6 +132,19 @@ export function SearchableSelect({
                     </CommandItem>
                   ))}
                 </CommandGroup>
+                {onCreateNew && (
+                  <div
+                    className="flex items-center gap-2 px-2 py-1.5 text-sm text-primary cursor-pointer hover:bg-primary/5 border-t border-border mt-1"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setOpen(false)
+                      onCreateNew()
+                    }}
+                  >
+                    <Plus className="h-3 w-3" />
+                    {createLabel}
+                  </div>
+                )}
               </>
             )}
           </CommandList>

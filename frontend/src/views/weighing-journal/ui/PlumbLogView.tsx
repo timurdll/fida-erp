@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ArrowLeft, Printer, Pencil, RotateCcw, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Printer, Pencil, RotateCcw, Trash2, Save, Lock, Link2, Loader2, FileText } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { cn } from '@/shared/lib/utils'
 import { plumbLogKeys } from '@/entities/plumb-log/model/queryKeys'
 import {
   getPlumbLogById,
@@ -20,6 +22,8 @@ import {
   createReturn,
   deactivatePlumbLog,
 } from '@/entities/plumb-log/api/plumbLogApi'
+import { getApplications, getApplicationById } from '@/entities/application/api/applicationApi'
+import type { Application } from '@/entities/application/model/types'
 import { getCompanies } from '@/entities/company/api/companyApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { getTransports } from '@/entities/transport/api/transportApi'
@@ -27,9 +31,11 @@ import { getDrivers } from '@/entities/driver/api/driverApi'
 import { getBsuList } from '@/entities/bsu/api/bsuApi'
 import { getConstructions } from '@/entities/construction/api/constructionApi'
 import { getNomenclatures } from '@/entities/nomenclature/api/nomenclatureApi'
+import { getObjects } from '@/entities/object/api/objectApi'
+import { getCarriers } from '@/entities/carrier/api/carrierApi'
 import type { CreatePlumbLogDto, PlumbLog } from '@/entities/plumb-log/model/types'
 
-interface Props { id: number }
+interface Props { id: number; backUrl?: string; backLabel?: string }
 
 const fmtDt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -347,6 +353,97 @@ function printTTN(plumbLog: PlumbLog) {
   setTimeout(() => printWindow.print(), 500)
 }
 
+// Акт взвешивания — для отвесов сырья (без привязки к заявке). Две копии на странице.
+function printAct(plumbLog: PlumbLog) {
+  const formatDT = (dt: string | null | undefined) => {
+    if (!dt) return '—'
+    return new Intl.DateTimeFormat('ru-KZ', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }).format(new Date(dt))
+  }
+
+  const actHtml = (copy: number) => `
+    <div class="act"${copy === 2 ? ' style="margin-top:32px;padding-top:24px;border-top:1px dashed #000;"' : ''}>
+      <h3>Акт взвешивания №${plumbLog.id}</h3>
+      <p>Поставщик: ${plumbLog.supplier?.name ?? '—'}</p>
+      <p>Заказчик: ${plumbLog.customer?.name ?? '—'}</p>
+      <p>Гос.номер: ${plumbLog.transport?.plateNumber ?? '—'}</p>
+      <p>Водитель: ${plumbLog.driver?.fullName ?? '—'}</p>
+      <p>Материал: ${plumbLog.material?.name ?? '—'}</p>
+      <p>Перевозчик: ${plumbLog.carrier?.name ?? '—'}</p>
+      <p style="margin-top:12px;font-weight:bold;">Данные по весу:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Брутто, кг</th><th>Тара, кг</th><th>Нетто, кг</th>
+            <th>Номер силоса</th><th>Кол-во мешков</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${plumbLog.gross ?? '—'}</td>
+            <td>${plumbLog.tare ?? '—'}</td>
+            <td>${plumbLog.net ?? '—'}</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+      <table style="margin-top:8px;">
+        <tbody>
+          <tr>
+            <th></th>
+            <th>Первое взвешивание</th>
+            <th>Второе взвешивание</th>
+          </tr>
+          <tr>
+            <td>Оператор</td>
+            <td>${plumbLog.firstOperator?.fullName ?? '—'}</td>
+            <td>${plumbLog.secondOperator?.fullName ?? '—'}</td>
+          </tr>
+          <tr>
+            <td>Дата и время</td>
+            <td>${formatDT(plumbLog.firstWeighingAt)}</td>
+            <td>${formatDT(plumbLog.secondWeighingAt)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Акт взвешивания №${plumbLog.id}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; color: #000; background: #fff; }
+    h3 { margin: 0 0 8px; font-size: 14px; font-weight: bold; }
+    p { margin: 2px 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 4px; }
+    th, td { border: 1px solid #000; padding: 4px 8px; text-align: center; font-size: 11px; }
+    th { background: #f0f0f0; font-weight: bold; }
+    @media print { body { margin: 0; } @page { size: A4 portrait; margin: 10mm; } }
+  </style>
+</head>
+<body>
+  ${actHtml(1)}
+  ${actHtml(2)}
+</body>
+</html>`
+
+  const printWindow = window.open('', '_blank', 'width=900,height=1000')
+  if (!printWindow) {
+    toast.error('Не удалось открыть окно печати. Разрешите всплывающие окна.')
+    return
+  }
+  printWindow.document.write(html)
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => printWindow.print(), 500)
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{children}</h3>
 }
@@ -362,12 +459,170 @@ function ReadonlyVal({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function PlumbLogView({ id }: Props) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const [tareInput, setTareInput] = useState('')
-  const [grossInput, setGrossInput] = useState('')
+// Поле в режиме просмотра — просто текст (визуально отличается от редактируемого поля)
+function ViewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <div className="h-9 flex items-center text-sm text-foreground">{value || '—'}</div>
+    </div>
+  )
+}
 
+// Поле, которое нельзя редактировать даже в режиме редактирования (привязано к заявке)
+function LockedField({ label, value, editing }: { label: string; value: string; editing: boolean }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-sm text-muted-foreground flex items-center gap-1.5">
+        {label}
+        {editing && <Lock className="h-3 w-3 text-muted-foreground/60" />}
+      </Label>
+      <div className="h-9 flex items-center text-sm text-foreground">{value || '—'}</div>
+      {editing && <p className="text-xs text-muted-foreground/60">не редактируется</p>}
+    </div>
+  )
+}
+
+const fmtDmy = (iso: string | null) => {
+  if (!iso) return ''
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}.${m}.${y}`
+}
+
+// Диалог «Изменить привязку»: заявки за дату отвеса + поиск по ID
+function ChangeApplicationDialog({
+  plumbLog,
+  onClose,
+}: {
+  plumbLog: PlumbLog
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const plumbDate = plumbLog.firstWeighingAt?.slice(0, 10) ?? ''
+  const [searchId, setSearchId] = useState('')
+  const [searchResult, setSearchResult] = useState<Application | null | 'not_found'>(null)
+  const [isSearching, setIsSearching] = useState(false)
+
+  const { data: dayApps = [], isLoading: dayLoading } = useQuery({
+    queryKey: ['applications', { deliveryDate: plumbDate, isActive: true }],
+    queryFn: () => getApplications({ deliveryDate: plumbDate, isActive: true }),
+    enabled: !!plumbDate,
+  })
+
+  // Поиск по ID с debounce 400ms
+  useEffect(() => {
+    if (!searchId) { setSearchResult(null); return }
+    const id = parseInt(searchId, 10)
+    if (isNaN(id)) return
+    const t = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        setSearchResult(await getApplicationById(id))
+      } catch {
+        setSearchResult('not_found')
+      } finally {
+        setIsSearching(false)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [searchId])
+
+  const bindMutation = useMutation({
+    mutationFn: (applicationId: number) => updatePlumbLog(plumbLog.id, { applicationId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: plumbLogKeys.detail(plumbLog.id) })
+      queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() })
+      toast.success('Привязка обновлена')
+      onClose()
+    },
+    onError: () => toast.error('Ошибка изменения привязки'),
+  })
+
+  const rows: Application[] = searchId
+    ? (searchResult && searchResult !== 'not_found' ? [searchResult] : [])
+    : dayApps
+  const showLoading = searchId ? isSearching : dayLoading
+  const showNotFound = !!searchId && searchResult === 'not_found' && !isSearching
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Изменить привязку</DialogTitle>
+          <DialogDescription>
+            Заявки за {fmtDmy(plumbLog.firstWeighingAt)} или введите ID для поиска
+          </DialogDescription>
+        </DialogHeader>
+
+        <Input
+          type="number"
+          placeholder="Поиск по ID заявки..."
+          value={searchId}
+          onChange={(e) => setSearchId(e.target.value)}
+          className="bg-background-elevated border-border"
+        />
+
+        <div className="max-h-[360px] overflow-y-auto rounded-md border border-border">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b border-border">
+                {['ID', 'Заказчик', 'Объект', 'МБ', 'Куб.'].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {showLoading ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground"><Loader2 className="inline h-4 w-4 animate-spin" /></td></tr>
+              ) : showNotFound ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Заявка не найдена</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Заявок нет</td></tr>
+              ) : (
+                rows.map((app) => (
+                  <tr
+                    key={app.id}
+                    className={cn(
+                      'border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors',
+                      app.id === plumbLog.applicationId && 'bg-primary/10',
+                    )}
+                    onClick={() => bindMutation.mutate(app.id)}
+                  >
+                    <td className="px-3 py-2 text-muted-foreground">{app.id}</td>
+                    <td className="px-3 py-2">{app.customer?.name ?? '—'}</td>
+                    <td className="px-3 py-2">{app.object?.name ?? '—'}</td>
+                    <td className="px-3 py-2">{app.material?.name ?? '—'}</td>
+                    <td className="px-3 py-2">{app.targetVolume != null ? app.targetVolume.toFixed(2) : '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+interface DetailProps {
+  id: number
+  plumbLog: PlumbLog
+  isConcrete: boolean
+  backUrl: string
+  backLabel: string
+  suppliers: Awaited<ReturnType<typeof getCompanies>>
+  customers: Awaited<ReturnType<typeof getCompanies>>
+  materials: Awaited<ReturnType<typeof getMaterials>>
+  transports: Awaited<ReturnType<typeof getTransports>>
+  drivers: Awaited<ReturnType<typeof getDrivers>>
+  bsuList: Awaited<ReturnType<typeof getBsuList>>
+  constructions: Awaited<ReturnType<typeof getConstructions>>
+  nomenclatures: Awaited<ReturnType<typeof getNomenclatures>>
+  objects: Awaited<ReturnType<typeof getObjects>>
+  carriers: Awaited<ReturnType<typeof getCarriers>>
+}
+
+export function PlumbLogView({ id, backUrl = '/plumb', backLabel = 'Журнал отвесов' }: Props) {
   const { data: plumbLog, isLoading } = useQuery({
     queryKey: plumbLogKeys.detail(id),
     queryFn: () => getPlumbLogById(id),
@@ -403,10 +658,23 @@ export function PlumbLogView({ id }: Props) {
     staleTime: 60_000,
   })
 
+  // Все активные БСУ — фильтр по companyId возвращал пусто (companyId БСУ ≠ supplierId заявки)
   const { data: bsuList = [], isLoading: bsuLoading } = useQuery({
-    queryKey: ['bsu', { isActive: true, companyId: plumbLog?.supplierId }],
-    queryFn: () => getBsuList({ isActive: true, companyId: plumbLog?.supplierId }),
-    enabled: isConcrete && !!plumbLog?.supplierId,
+    queryKey: ['bsu', { isActive: true }],
+    queryFn: () => getBsuList({ isActive: true }),
+    enabled: isConcrete,
+    staleTime: 60_000,
+  })
+
+  const { data: objects = [], isLoading: objectsLoading } = useQuery({
+    queryKey: ['objects', { isActive: true }],
+    queryFn: () => getObjects({ isActive: true }),
+    staleTime: 60_000,
+  })
+
+  const { data: carriers = [], isLoading: carriersLoading } = useQuery({
+    queryKey: ['carriers', { isActive: true }],
+    queryFn: () => getCarriers({ isActive: true }),
     staleTime: 60_000,
   })
 
@@ -424,13 +692,78 @@ export function PlumbLogView({ id }: Props) {
     enabled: !isConcrete,
   })
 
-  const { control, handleSubmit } = useForm<Partial<CreatePlumbLogDto>>({
-    values: plumbLog ? {
+  // Ждём загрузки ВСЕХ нужных списков, чтобы Select сразу показывал labels
+  const concreteLists = isConcrete ? bsuLoading || constructionsLoading : false
+  const rawLists = !isConcrete && !!plumbLog ? nomenclaturesLoading : false
+  const listsLoading = suppliersLoading || materialsLoading || transportsLoading || driversLoading ||
+    objectsLoading || carriersLoading || concreteLists || rawLists
+
+  if (isLoading || !plumbLog || listsLoading) {
+    return (
+      <div className="min-h-screen p-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
+
+  // key={plumbLog.id}: дочерний компонент монтируется заново при смене отвеса, и его
+  // useForm берёт свежие defaultValues. defaultValues + gated render — тот же рабочий
+  // паттерн, что в ApplicationForm (values/reset/setValue до полей здесь не доходили).
+  return (
+    <PlumbLogDetail
+      key={plumbLog.id}
+      id={id}
+      plumbLog={plumbLog}
+      isConcrete={isConcrete}
+      backUrl={backUrl}
+      backLabel={backLabel}
+      suppliers={suppliers}
+      customers={customers}
+      materials={materials}
+      transports={transports}
+      drivers={drivers}
+      bsuList={bsuList}
+      constructions={constructions}
+      nomenclatures={nomenclatures}
+      objects={objects}
+      carriers={carriers}
+    />
+  )
+}
+
+function PlumbLogDetail({
+  id,
+  plumbLog,
+  isConcrete,
+  backUrl,
+  backLabel,
+  suppliers,
+  customers,
+  materials,
+  transports,
+  drivers,
+  bsuList,
+  constructions,
+  nomenclatures,
+  objects,
+  carriers,
+}: DetailProps) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const [isEditing, setIsEditing] = useState(false)
+  const [showBindDialog, setShowBindDialog] = useState(false)
+  const [tareInput, setTareInput] = useState('')
+  const [grossInput, setGrossInput] = useState('')
+
+  const defaultValues = {
       supplierId: plumbLog.supplierId,
       customerId: plumbLog.customerId,
       materialId: plumbLog.materialId,
+      objectId: plumbLog.objectId ?? undefined,
       transportId: plumbLog.transportId ?? undefined,
       driverId: plumbLog.driverId ?? undefined,
+      carrierId: plumbLog.carrierId ?? undefined,
       bsuId: plumbLog.bsuId ?? undefined,
       constructionId: plumbLog.constructionId ?? undefined,
       nomenclatureId: plumbLog.nomenclatureId ?? undefined,
@@ -442,8 +775,24 @@ export function PlumbLogView({ id }: Props) {
       impurity: plumbLog.impurity ?? undefined,
       cleanNet: plumbLog.cleanNet ?? undefined,
       documentWeight: plumbLog.documentWeight ?? undefined,
-    } : {},
-  })
+  } satisfies Partial<CreatePlumbLogDto>
+
+  const { control, handleSubmit, reset } = useForm<Partial<CreatePlumbLogDto>>({ defaultValues })
+
+  const selectedTransport = transports.find((t) => t.id === plumbLog.transportId)
+
+  // Разрешённые значения для отображения в режиме просмотра
+  const supplierName = suppliers.find((c) => c.id === plumbLog.supplierId)?.name ?? '—'
+  const customerName = customers.find((c) => c.id === plumbLog.customerId)?.name ?? '—'
+  const materialName = materials.find((m) => m.id === plumbLog.materialId)?.name ?? '—'
+  const driverName = drivers.find((d) => d.id === plumbLog.driverId)?.fullName ?? '—'
+  const transportPlate = transports.find((t) => t.id === plumbLog.transportId)?.plateNumber ?? '—'
+  const bsuName = bsuList.find((b) => b.id === plumbLog.bsuId)?.name ?? '—'
+  const constructionName = constructions.find((c) => c.id === plumbLog.constructionId)?.name ?? '—'
+  const nomenclatureName = nomenclatures.find((n) => n.id === plumbLog.nomenclatureId)?.name ?? '—'
+  const objectName = objects.find((o) => o.id === plumbLog.objectId)?.name ?? plumbLog.object?.name ?? '—'
+  const carrierName = carriers.find((c) => c.id === plumbLog.carrierId)?.name
+    ?? selectedTransport?.carrier?.name ?? plumbLog.carrier?.name ?? '—'
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: plumbLogKeys.detail(id) })
@@ -452,9 +801,14 @@ export function PlumbLogView({ id }: Props) {
 
   const saveMutation = useMutation({
     mutationFn: (data: Partial<CreatePlumbLogDto>) => updatePlumbLog(id, data),
-    onSuccess: () => { invalidate(); toast.success('Сохранено') },
+    onSuccess: () => { invalidate(); setIsEditing(false); toast.success('Сохранено') },
     onError: () => toast.error('Ошибка сохранения'),
   })
+
+  const handleCancel = () => {
+    reset(defaultValues)
+    setIsEditing(false)
+  }
 
   const weighTareMutation = useMutation({
     mutationFn: () => weighTare(id, Number(tareInput)),
@@ -465,8 +819,12 @@ export function PlumbLogView({ id }: Props) {
   const weighGrossMutation = useMutation({
     mutationFn: () => weighGross(id, Number(grossInput)),
     onSuccess: () => { invalidate(); toast.success('Брутто взвешено') },
-    onError: () => toast.error('Ошибка взвешивания'),
+    onError: (e: Error) => toast.error(e.message || 'Ошибка взвешивания'),
   })
+
+  // Нетто = брутто − тара. Брутто ≤ тары физически невозможно — блокируем взвешивание.
+  const grossNum = grossInput ? Number(grossInput) : null
+  const grossInvalid = grossNum != null && plumbLog.tare != null && grossNum <= plumbLog.tare
 
   const returnMutation = useMutation({
     mutationFn: () => createReturn(id),
@@ -487,35 +845,18 @@ export function PlumbLogView({ id }: Props) {
     },
   })
 
-  const selectedTransport = transports.find((t) => t.id === plumbLog?.transportId)
-
-  // Ждём загрузки ВСЕХ нужных списков, чтобы Select сразу отображал labels
-  const concreteLists = isConcrete ? bsuLoading || constructionsLoading : false
-  const rawLists = !isConcrete && !!plumbLog ? nomenclaturesLoading : false
-  const listsLoading = suppliersLoading || materialsLoading || transportsLoading || driversLoading ||
-    concreteLists || rawLists
-
-  if (isLoading || !plumbLog || listsLoading) {
-    return (
-      <div className="min-h-screen p-6 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen p-6">
       <div className="mb-6">
         <button
-          onClick={() => router.push('/plumb')}
+          onClick={() => router.push(backUrl)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
-          Журнал отвесов
+          {backLabel}
         </button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
               Отвес ID: {id}
@@ -525,17 +866,65 @@ export function PlumbLogView({ id }: Props) {
               {!plumbLog.isActive && (
                 <span className="ml-2 text-sm font-normal text-destructive bg-destructive/10 rounded px-2 py-0.5">Неактивен</span>
               )}
+              {isEditing && (
+                <span className="ml-2 text-sm font-normal text-primary bg-primary/10 rounded px-2 py-0.5">Редактирование</span>
+              )}
             </h1>
             <p className="mt-1 text-muted-foreground text-sm">{fmt(plumbLog.firstWeighingAt)}</p>
           </div>
-          <Button
-            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
-            onClick={handleSubmit((data) => saveMutation.mutate(data))}
-            disabled={saveMutation.isPending}
-          >
-            <Save className="h-4 w-4" />
-            {saveMutation.isPending ? 'Сохранение...' : 'Сохранить данные'}
-          </Button>
+
+          {isEditing ? (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                onClick={handleSubmit((data) => saveMutation.mutate(data))}
+                disabled={saveMutation.isPending}
+              >
+                <Save className="h-4 w-4" />
+                {saveMutation.isPending ? 'Сохранение...' : 'Сохранить'}
+              </Button>
+              <Button variant="outline" onClick={handleCancel} disabled={saveMutation.isPending}>
+                Отмена
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                onClick={() => setIsEditing(true)}
+              >
+                <Pencil className="h-4 w-4" />
+                Редактировать
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={() => printTTN(plumbLog)}>
+                <Printer className="h-4 w-4" />
+                Распечатать ТТН
+              </Button>
+              {!isConcrete && (
+                <Button variant="outline" className="gap-2" onClick={() => printAct(plumbLog)}>
+                  <FileText className="h-4 w-4" />
+                  Распечатать акт
+                </Button>
+              )}
+              <Button variant="outline" className="gap-2" onClick={() => setShowBindDialog(true)}>
+                <Link2 className="h-4 w-4" />
+                Изменить привязку
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                disabled={returnMutation.isPending}
+                onClick={() => {
+                  if (window.confirm('Создать возврат для этого отвеса?')) {
+                    returnMutation.mutate()
+                  }
+                }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Возврат
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -546,118 +935,83 @@ export function PlumbLogView({ id }: Props) {
             <div className="space-y-4">
               <SectionTitle>Общие данные</SectionTitle>
 
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Поставщик</Label>
-                <Controller
-                  name="supplierId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {suppliers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Заказчик</Label>
-                <Controller
-                  name="customerId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Материал</Label>
-                <Controller
-                  name="materialId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {materials.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-
-              {plumbLog.object && (
-                <ReadonlyVal label="Объект" value={plumbLog.object.name} />
-              )}
+              {/* Поставщик/Заказчик/Материал/Объект — всегда read-only (привязаны к заявке) */}
+              <LockedField label="Поставщик" value={supplierName} editing={isEditing} />
+              <LockedField label="Заказчик" value={customerName} editing={isEditing} />
+              <LockedField label="Материал" value={materialName} editing={isEditing} />
+              <LockedField label="Объект" value={objectName} editing={isEditing} />
 
               {isConcrete ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Объём (м³)</Label>
-                    <Controller
-                      name="volume"
-                      control={control}
-                      render={({ field }) => (
-                        <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
-                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Объём возврата (м³)</Label>
-                    <Controller name="returnVolume" control={control}
-                      render={({ field }) => (
-                        <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
-                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
-                      )} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Номер пломбы</Label>
-                    <Controller name="sealNumber" control={control}
-                      render={({ field }) => (
-                        <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value || undefined)} />
-                      )} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Осадка конуса (см)</Label>
-                    <Controller name="slumpCone" control={control}
-                      render={({ field }) => (
-                        <Input type="number" step="0.1" className="bg-background-elevated border-border h-9"
-                          value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
-                      )} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Тип перевозки</Label>
-                    <Controller name="deliveryType" control={control}
-                      render={({ field }) => (
-                        <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value || undefined)} />
-                      )} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">Конструкция</Label>
-                    <Controller name="constructionId" control={control}
-                      render={({ field }) => (
-                        <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
-                          <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбрана" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Не выбрана</SelectItem>
-                            {constructions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                  </div>
-                </>
-              ) : (
+                isEditing ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Объём (м³)</Label>
+                      <Controller
+                        name="volume"
+                        control={control}
+                        render={({ field }) => (
+                          <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
+                            value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Объём возврата (м³)</Label>
+                      <Controller name="returnVolume" control={control}
+                        render={({ field }) => (
+                          <Input type="number" step="0.01" className="bg-background-elevated border-border h-9"
+                            value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                        )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Номер пломбы</Label>
+                      <Controller name="sealNumber" control={control}
+                        render={({ field }) => (
+                          <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value || undefined)} />
+                        )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Осадка конуса (см)</Label>
+                      <Controller name="slumpCone" control={control}
+                        render={({ field }) => (
+                          <Input type="number" step="0.1" className="bg-background-elevated border-border h-9"
+                            value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                        )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Тип перевозки</Label>
+                      <Controller name="deliveryType" control={control}
+                        render={({ field }) => (
+                          <Input className="bg-background-elevated border-border h-9" value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value || undefined)} />
+                        )} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-muted-foreground">Конструкция</Label>
+                      <Controller name="constructionId" control={control}
+                        render={({ field }) => (
+                          <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                            <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбрана" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Не выбрана</SelectItem>
+                              {constructions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ViewField label="Объём (м³)" value={plumbLog.volume != null ? String(plumbLog.volume) : '—'} />
+                    <ViewField label="Объём возврата (м³)" value={plumbLog.returnVolume != null ? String(plumbLog.returnVolume) : '—'} />
+                    <ViewField label="Номер пломбы" value={plumbLog.sealNumber ?? '—'} />
+                    <ViewField label="Осадка конуса (см)" value={plumbLog.slumpCone != null ? String(plumbLog.slumpCone) : '—'} />
+                    <ViewField label="Тип перевозки" value={plumbLog.deliveryType ?? '—'} />
+                    <ViewField label="Конструкция" value={constructionName} />
+                  </>
+                )
+              ) : isEditing ? (
                 <>
                   <div className="space-y-1.5">
                     <Label className="text-sm text-muted-foreground">Номенклатура</Label>
@@ -697,6 +1051,13 @@ export function PlumbLogView({ id }: Props) {
                       )} />
                   </div>
                 </>
+              ) : (
+                <>
+                  <ViewField label="Номенклатура" value={nomenclatureName} />
+                  <ViewField label="Сорность (%)" value={plumbLog.impurity != null ? String(plumbLog.impurity) : '—'} />
+                  <ViewField label="Чистый нетто (кг)" value={plumbLog.cleanNet != null ? plumbLog.cleanNet.toLocaleString('ru-RU') : '—'} />
+                  <ViewField label="Вес по документам (кг)" value={plumbLog.documentWeight != null ? plumbLog.documentWeight.toLocaleString('ru-RU') : '—'} />
+                </>
               )}
             </div>
 
@@ -704,49 +1065,77 @@ export function PlumbLogView({ id }: Props) {
             <div className="space-y-4">
               <SectionTitle>Данные по транспорту</SectionTitle>
 
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Водитель</Label>
-                <Controller name="driverId" control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Не выбран</SelectItem>
-                        {drivers.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.fullName}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )} />
-              </div>
-
-              <ReadonlyVal label="Перевозчик" value={selectedTransport?.carrier?.name ?? plumbLog.carrier?.name ?? '—'} />
-
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Гос. номер</Label>
-                <Controller name="transportId" control={control}
-                  render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Выберите транспорт" /></SelectTrigger>
-                      <SelectContent>
-                        {transports.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.plateNumber}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )} />
-              </div>
-
-              {isConcrete && (
+              {isEditing ? (
                 <div className="space-y-1.5">
-                  <Label className="text-sm text-muted-foreground">БСУ</Label>
-                  <Controller name="bsuId" control={control}
+                  <Label className="text-sm text-muted-foreground">Водитель</Label>
+                  <Controller name="driverId" control={control}
                     render={({ field }) => (
                       <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
                         <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Не выбран</SelectItem>
-                          {bsuList.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                          {drivers.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.fullName}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     )} />
                 </div>
+              ) : (
+                <ViewField label="Водитель" value={driverName} />
+              )}
+
+              {isEditing ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm text-muted-foreground">Перевозчик</Label>
+                  <Controller name="carrierId" control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                        <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Не выбран</SelectItem>
+                          {carriers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                </div>
+              ) : (
+                <ViewField label="Перевозчик" value={carrierName} />
+              )}
+
+              {isEditing ? (
+                <div className="space-y-1.5">
+                  <Label className="text-sm text-muted-foreground">Гос. номер</Label>
+                  <Controller name="transportId" control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                        <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Выберите транспорт" /></SelectTrigger>
+                        <SelectContent>
+                          {transports.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.plateNumber}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )} />
+                </div>
+              ) : (
+                <ViewField label="Гос. номер" value={transportPlate} />
+              )}
+
+              {isConcrete && (
+                isEditing ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">БСУ</Label>
+                    <Controller name="bsuId" control={control}
+                      render={({ field }) => (
+                        <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
+                          <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Не выбран</SelectItem>
+                            {bsuList.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                  </div>
+                ) : (
+                  <ViewField label="БСУ" value={bsuName} />
+                )
               )}
             </div>
 
@@ -810,12 +1199,17 @@ export function PlumbLogView({ id }: Props) {
                         type="button"
                         size="sm"
                         className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 whitespace-nowrap"
-                        disabled={plumbLog.gross !== null || !grossInput || weighGrossMutation.isPending}
+                        disabled={plumbLog.gross !== null || !grossInput || grossInvalid || weighGrossMutation.isPending}
                         onClick={() => weighGrossMutation.mutate()}
                       >
                         {plumbLog.gross !== null ? '✓ Взвешено' : 'Взвесить'}
                       </Button>
                     </div>
+                    {grossInvalid && plumbLog.gross === null && (
+                      <p className="text-xs text-destructive">
+                        Брутто должно быть больше тары ({plumbLog.tare?.toLocaleString('ru-RU')} кг)
+                      </p>
+                    )}
                     {plumbLog.gross !== null && (
                       <p className="text-xs text-muted-foreground">{plumbLog.gross.toLocaleString('ru-RU')} кг</p>
                     )}
@@ -840,45 +1234,11 @@ export function PlumbLogView({ id }: Props) {
         </div>
       </form>
 
-      {/* Action bar */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      {/* Danger zone */}
+      <div className="mt-8 pt-6 border-t border-border">
         <Button
           variant="outline"
-          className="gap-2"
-          onClick={() => printTTN(plumbLog)}
-        >
-          <Printer className="h-4 w-4" />
-          Распечатать ТТН
-        </Button>
-        <Button variant="outline" onClick={() => router.push('/plumb')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Вернуться назад
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={handleSubmit((data) => saveMutation.mutate(data))}
-          disabled={saveMutation.isPending}
-        >
-          <Pencil className="h-4 w-4" />
-          Редактировать
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-2"
-          disabled={returnMutation.isPending}
-          onClick={() => {
-            if (window.confirm('Создать возврат для этого отвеса?')) {
-              returnMutation.mutate()
-            }
-          }}
-        >
-          <RotateCcw className="h-4 w-4" />
-          Возврат
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
+          className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
           disabled={deactivateMutation.isPending}
           onClick={() => {
             if (window.confirm('Деактивировать отвес? Это действие нельзя отменить.')) {
@@ -890,6 +1250,10 @@ export function PlumbLogView({ id }: Props) {
           Удалить отвес
         </Button>
       </div>
+
+      {showBindDialog && (
+        <ChangeApplicationDialog plumbLog={plumbLog} onClose={() => setShowBindDialog(false)} />
+      )}
     </div>
   )
 }

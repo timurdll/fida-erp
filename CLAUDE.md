@@ -51,6 +51,24 @@ import type { IPlumbLogRepository } from '../../domain/plumb-log/i-plumb-log.rep
 - `PrismaService` использует `@prisma/adapter-pg` через `PrismaPg(pool)`
 - Seed-команда прописана в `prisma.config.ts` → `migrations.seed`
 
+### Bootstrap (`main.ts`) — важные глобальные настройки
+
+- **Глобальный префикс `api`** (`setGlobalPrefix('api')`) → все роуты живут под `/api/...`
+- **Глобальный `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`** — тело запроса (POST/PATCH) с полем, которого нет в DTO с декоратором `class-validator`, **отклоняется с 400**. Добавляя поле в body — обязательно добавь свойство + декоратор в соответствующий DTO. (Query-параметры в контроллерах читаются вручную через `@Query('name')` и под whitelist не попадают — так добавлены, напр., `standalone`, `filterType`, `excludeType`.)
+- **CORS**: `origin = process.env.FRONTEND_URL ?? 'http://localhost:3000'`, `credentials: true`. ⚠️ Если фронт поднялся не на :3000 (autoPort, когда 3000 занят) — запросы режет CORS. Держи фронт на :3000 (освободи порт) либо задай `FRONTEND_URL`.
+
+### Environment (`.env` — не в git)
+
+**`backend/.env`** (`.env.example` содержит только `DATABASE_URL`):
+- `DATABASE_URL` — строка подключения Postgres
+- `JWT_SECRET` — обязателен (без него не подписать/проверить токен)
+- `JWT_EXPIRES_IN` — TTL токена, дефолт `7d`
+- `PORT` — дефолт `3001`
+- `FRONTEND_URL` — origin для CORS, дефолт `http://localhost:3000`
+
+**`frontend/.env.local`**:
+- `NEXT_PUBLIC_API_URL` — базовый URL API, дефолт `http://localhost:3001/api`
+
 ### API эндпоинты
 
 **Auth:** `POST /api/auth/login` → `{ accessToken, user }`, `GET /api/auth/me`
@@ -68,16 +86,17 @@ import type { IPlumbLogRepository } from '../../domain/plumb-log/i-plumb-log.rep
 **PlumbLogs:** `GET/POST /api/plumb-logs`, `PATCH /api/plumb-logs/:id`, `PATCH /api/plumb-logs/:id/weigh-tare`, `PATCH /api/plumb-logs/:id/weigh-gross`, `POST /api/plumb-logs/:id/return`, `PATCH /api/plumb-logs/:id/deactivate`
 - Создание/взвешивание/возврат: `ADMIN | DEPUTY_DIRECTOR | DISPATCHER`
 - Деактивация: `ADMIN | DEPUTY_DIRECTOR`
-- Фильтры: `?dateFrom=&dateTo=&isActive=&isReturn=&supplierId=&customerId=&materialId=&applicationId=`
+- Фильтры: `?dateFrom=&dateTo=&isActive=&isReturn=&supplierId=&customerId=&materialId=&applicationId=&standalone=`
+- `standalone=true` → только сырьё (`applicationId IS NULL`); журнал `/plumb` использует этот фильтр, бетон виден через карточку заявки
 - Без фильтров и без `applicationId` — возвращает только сегодняшние записи
 
-**Справочники — 10 модулей:** `GET/POST /api/{entity}`, `PATCH /api/{entity}/:id`, `PATCH /api/{entity}/:id/deactivate`
+**Справочники — 10 модулей:** `GET/POST /api/{entity}`, `PATCH /api/{entity}/:id`, `PATCH /api/{entity}/:id/deactivate`, `PATCH /api/{entity}/:id/activate`
 
 | Модуль | Особенности |
 |--------|-------------|
 | `companies` | enum `function` (CUSTOMER/SUPPLIER/ALL/OWN), enum `type` (TOO/IP/CHL) |
 | `objects` | `companyId → Company`; join `company{id,name}`; фильтр `?companyId=` |
-| `materials` | enum `type` (CONCRETE/SAND/GRAVEL/CEMENT/OTHER), `density` float |
+| `materials` | enum `type` (CONCRETE/SAND/GRAVEL/CEMENT/OTHER), `density` float; фильтры `?excludeType=` (исключить тип) и `?filterType=` (только этот тип) |
 | `constructions`, `delivery-methods`, `carriers` | `name`, `note` |
 | `drivers` | `fullName` (не `name`) |
 | `transports` | `plateNumber` @unique; join driver+carrier; фильтры `?carrierId=&driverId=` |
@@ -132,7 +151,7 @@ src/
 
 - **Zustand store** `shared/store/auth.store.ts` — persist в localStorage, синхронизирует cookie `is_authed=1`
 - **Middleware** `src/middleware.ts` — защищает все роуты кроме `/login` по cookie
-- **API client** `shared/api/client.ts` — добавляет `Authorization: Bearer` из стора; на 401 → авто-logout
+- **API client** `shared/api/client.ts` — базовый URL `process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'`; добавляет `Authorization: Bearer` из стора; на 401 → `clearAuth()` + redirect `/login`; пустой ответ (204) → `undefined`; путь передаётся БЕЗ префикса `/api` (он уже в base URL)
 
 ```typescript
 import { apiFetch } from '@/shared/api/client'
@@ -149,9 +168,9 @@ apiFetch<T>('/endpoint', { method: 'POST', body: JSON.stringify(dto) })
 | `/plan/add` | `PlanApplicationFormView` | Форма создания; пресет `?date=&time=` из URL |
 | `/plan/view/[id]` | `PlanApplicationView` | Детали + прогресс-бар + журнал отвесов (строки кликабельны → /plumb/view/:id) |
 | `/plan/edit/[id]` | `PlanApplicationFormView` | Предзаполненная форма |
-| `/plumb` | `views/weighing-journal` | Журнал отвесов, реальный API, фильтры по датам/поставщику/материалу |
+| `/plumb` | `views/weighing-journal` | Журнал отвесов (только сырьё, `standalone=true`), реальный API, фильтры по датам/поставщику/материалу |
 | `/plumb/new` | `PlumbLogFormView` | Форма создания отвеса (бетон с applicationId / сырьё без) |
-| `/plumb/view/[id]` | `PlumbLogView` | Просмотр/редактирование отвеса, взвешивание тары/брутто |
+| `/plumb/view/[id]` | `PlumbLogView` | Просмотр/редактирование отвеса, взвешивание тары/брутто; действия в шапке, печать ТТН + акт |
 | `/users` | `views/users` | Реальный API |
 | `/dictionaries` | `views/dictionaries` | 10 табов (включая BSU и Nomenclature), реальный API |
 
@@ -188,7 +207,9 @@ apiFetch<T>('/endpoint', { method: 'POST', body: JSON.stringify(dto) })
 **`PlumbLogFormView`** (`views/weighing-journal/ui/PlumbLogFormView.tsx`):
 - `isConcrete = !!applicationId` — два режима: бетон (привязан к заявке) / сырьё (без заявки)
 - Бетон: поставщик/заказчик/материал/объект — ReadonlyField, автозаполняются из заявки
+- Сырьё: материалы загружаются с `filterType=OTHER` (только тип «Прочее»)
 - Транспорт → автоподстановка водителя и перевозчика через `useEffect`
+- Inline-создание (форма сырья): `SearchableSelect` + `onCreateNew` + `CreateInlineDialog` на полях Поставщик/Заказчик/Материал/Водитель/Транспорт/Перевозчик/Конструкция. После создания — `setValue(id)`; `key={field.value}` ремоунтит select, чтобы подгрузился лейбл. Перевозчик: `SearchableSelect`, автозаполняется из транспорта, но переопределяем вручную/через `+`. Материал создаётся с `type='OTHER'`; компании — через общий `CreateCompanyForm` (`defaultFunction`: поставщик `SUPPLIER`, заказчик `OWN`); перевозчик/конструкция — отдельные сущности (name + note)
 - Тара/брутто — отдельный `useState` + confirmed-состояния (кнопки «Взвесить тару» / «Взвесить брутто»)
 - Прогресс-бар заявки вверху формы (только для бетона)
 - Сабмит: `createPlumbLog` → если tare: `weighTare` → если gross: `weighGross` (последовательно)
@@ -199,6 +220,8 @@ apiFetch<T>('/endpoint', { method: 'POST', body: JSON.stringify(dto) })
 - `customers = suppliers` (все активные компании, без фильтра OWN)
 - useForm `values` для синхронизации с серверными данными
 - Кнопки взвешивания: заблокированы когда tare/gross уже заполнены
+- Кнопки действий в шапке: view-режим — Редактировать/Печать ТТН/(Печать акта — только сырьё `!applicationId`)/Изменить привязку/Возврат; edit-режим — Сохранить/Отмена. Внизу страницы — только «Удалить отвес» (danger-зона, не fixed)
+- Печать: `printTTN` (всегда) + `printAct` «Акт взвешивания» (только сырьё, 2 копии на странице, `ru-KZ`); обе функции — client-side HTML + `window.open` + `print()`
 
 ### DatePicker
 
@@ -236,6 +259,13 @@ docker compose up -d   # Поднять PostgreSQL
 - **CompanyFunction**: CUSTOMER | SUPPLIER | ALL | OWN
 
 ---
+
+## Verification & Tests
+
+Юнит-тестов фактически нет: на фронте `test`-скрипта нет вовсе, на бэке jest сконфигурирован, но спеков нет (кроме дефолтного). Проверка изменений:
+- **Типы:** `npx tsc --noEmit` в `backend/` и/или `frontend/` — основной gate после каждого изменения
+- **Dev-серверы обычно уже запущены** (backend watch-режим подхватывает изменения на лету). Прежде чем стартовать свой — проверь занятость портов 3001/3000
+- **Lint:** `npm run lint`
 
 ## Dev Servers (.claude/launch.json)
 

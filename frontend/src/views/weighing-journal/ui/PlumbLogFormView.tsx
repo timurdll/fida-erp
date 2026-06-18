@@ -1,28 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { SearchableSelect, type SearchableOption } from '@/shared/ui/SearchableSelect'
+import { CreateInlineDialog } from '@/shared/ui/create-inline-dialog'
 import { plumbLogKeys } from '@/entities/plumb-log/model/queryKeys'
 import { createPlumbLog, weighTare, weighGross } from '@/entities/plumb-log/api/plumbLogApi'
 import { applicationKeys } from '@/entities/application/model/queryKeys'
 import { getApplicationById } from '@/entities/application/api/applicationApi'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
-import { getCompanies } from '@/entities/company/api/companyApi'
-import { getMaterials } from '@/entities/material/api/materialApi'
-import { getTransports } from '@/entities/transport/api/transportApi'
-import { getDrivers } from '@/entities/driver/api/driverApi'
+import { getCompanies, createCompany } from '@/entities/company/api/companyApi'
+import { getMaterials, createMaterial } from '@/entities/material/api/materialApi'
+import { getTransports, createTransport } from '@/entities/transport/api/transportApi'
+import { getDrivers, createDriver } from '@/entities/driver/api/driverApi'
+import { getCarriers, createCarrier } from '@/entities/carrier/api/carrierApi'
 import { getBsuList } from '@/entities/bsu/api/bsuApi'
 import { getNomenclatures } from '@/entities/nomenclature/api/nomenclatureApi'
-import { getConstructions } from '@/entities/construction/api/constructionApi'
+import { getConstructions, createConstruction } from '@/entities/construction/api/constructionApi'
 import type { CreatePlumbLogDto } from '@/entities/plumb-log/model/types'
+import type { CreateDriverDto, Driver } from '@/entities/driver/model/types'
+import type { CreateTransportDto, Transport } from '@/entities/transport/model/types'
+import type { CreateConstructionDto, Construction } from '@/entities/construction/model/types'
+import type { Carrier, CreateCarrierDto } from '@/entities/carrier/model/types'
+import type { Company, CreateCompanyDto, CompanyFunction, CompanyType } from '@/entities/company/model/types'
+import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model/types'
+import type { Material, CreateMaterialDto } from '@/entities/material/model/types'
 
 interface Props {
   applicationId?: number
@@ -54,6 +64,316 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   )
 }
 
+// ─── inline create forms ────────────────────────────────────────────────────────
+
+const COMPANY_FUNCTIONS: CompanyFunction[] = ['CUSTOMER', 'SUPPLIER', 'ALL', 'OWN']
+const COMPANY_TYPES: CompanyType[] = ['TOO', 'IP', 'CHL']
+
+function CreateCompanyForm({
+  defaultFunction,
+  onCreated,
+  onCancel,
+}: {
+  defaultFunction: CompanyFunction
+  onCreated: (c: Company) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, control, formState: { errors } } = useForm<CreateCompanyDto>({
+    defaultValues: { function: defaultFunction, type: 'TOO' },
+  })
+  const mutation = useMutation({
+    mutationFn: (dto: CreateCompanyDto) => createCompany(dto),
+    onSuccess: (company) => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['companies-own'] })
+      toast.success('Компания создана')
+      onCreated(company)
+    },
+    onError: () => toast.error('Ошибка при создании компании'),
+  })
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Наименование <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="Название компании" {...register('name', { required: true })} />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">Функция</Label>
+          <Controller name="function" control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPANY_FUNCTIONS.map((f) => <SelectItem key={f} value={f}>{CompanyFunctionLabel[f]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">Тип</Label>
+          <Controller name="type" control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger className="w-full bg-background-elevated border-border h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPANY_TYPES.map((t) => <SelectItem key={t} value={t}>{CompanyTypeLabel[t]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">БИН</Label>
+          <Input className="bg-background-elevated border-border h-9" {...register('bin')} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-sm text-foreground">Телефон</Label>
+          <Input className="bg-background-elevated border-border h-9" {...register('contactPhone')} />
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateMaterialForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (m: Material) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  // Материалы этой формы — только тип «Прочее» (сырьё), поэтому type зашит в OTHER.
+  const { register, handleSubmit, control, formState: { errors } } = useForm<CreateMaterialDto>({
+    defaultValues: { type: 'OTHER' },
+  })
+  const mutation = useMutation({
+    mutationFn: (dto: CreateMaterialDto) => createMaterial(dto),
+    onSuccess: (material) => {
+      queryClient.invalidateQueries({ queryKey: ['materials'] })
+      toast.success('Материал создан')
+      onCreated(material)
+    },
+    onError: () => toast.error('Ошибка при создании материала'),
+  })
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Наименование <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="Щебень, песок и т.п." {...register('name', { required: true })} />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Плотность (т/м³)</Label>
+        <Controller name="density" control={control}
+          render={({ field }) => (
+            <Input type="number" step="0.01" className="bg-background-elevated border-border h-9" placeholder="0.00"
+              value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+          )} />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateDriverForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (d: Driver) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, formState: { errors } } = useForm<CreateDriverDto>()
+  const mutation = useMutation({
+    mutationFn: (dto: CreateDriverDto) => createDriver(dto),
+    onSuccess: (driver) => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      toast.success('Водитель создан')
+      onCreated(driver)
+    },
+    onError: () => toast.error('Ошибка при создании водителя'),
+  })
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">ФИО водителя <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="Иванов Иван Иванович" {...register('fullName', { required: true })} />
+        {errors.fullName && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateCarrierForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (c: Carrier) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, formState: { errors } } = useForm<CreateCarrierDto>()
+  const mutation = useMutation({
+    mutationFn: (dto: CreateCarrierDto) => createCarrier(dto),
+    onSuccess: (carrier) => {
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
+      toast.success('Перевозчик создан')
+      onCreated(carrier)
+    },
+    onError: () => toast.error('Ошибка при создании перевозчика'),
+  })
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Наименование <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="Название перевозчика" {...register('name', { required: true })} />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Примечание</Label>
+        <Input className="bg-background-elevated border-border h-9" {...register('note')} />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateConstructionForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (c: Construction) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, formState: { errors } } = useForm<CreateConstructionDto>()
+  const mutation = useMutation({
+    mutationFn: (dto: CreateConstructionDto) => createConstruction(dto),
+    onSuccess: (construction) => {
+      queryClient.invalidateQueries({ queryKey: ['constructions'] })
+      toast.success('Конструкция создана')
+      onCreated(construction)
+    },
+    onError: () => toast.error('Ошибка при создании конструкции'),
+  })
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Наименование <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="Название конструкции" {...register('name', { required: true })} />
+        {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Примечание</Label>
+        <Input className="bg-background-elevated border-border h-9" {...register('note')} />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CreateTransportForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: (t: Transport, driverId?: number, carrierId?: number) => void
+  onCancel: () => void
+}) {
+  const queryClient = useQueryClient()
+  const { register, handleSubmit, control, formState: { errors } } = useForm<CreateTransportDto>()
+
+  const loadDrivers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getDrivers({ isActive: true, search }).then((list) => list.map((d) => ({ id: d.id, label: d.fullName }))),
+    [],
+  )
+  const loadCarriers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCarriers({ isActive: true, search }).then((list) => list.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+
+  const mutation = useMutation({
+    mutationFn: (dto: CreateTransportDto) => createTransport(dto),
+    onSuccess: (transport, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['transports'] })
+      toast.success('Транспорт создан')
+      onCreated(transport, variables.driverId, variables.carrierId)
+    },
+    onError: () => toast.error('Ошибка при создании транспорта'),
+  })
+
+  return (
+    <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Гос. номер <span className="text-destructive">*</span></Label>
+        <Input className="bg-background-elevated border-border h-9" placeholder="845 WQA 01" {...register('plateNumber', { required: true })} />
+        {errors.plateNumber && <p className="text-xs text-destructive">Обязательное поле</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Тара (кг)</Label>
+        <Controller name="tare" control={control}
+          render={({ field }) => (
+            <Input type="number" className="bg-background-elevated border-border h-9" placeholder="0"
+              value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+          )} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Водитель</Label>
+        <Controller name="driverId" control={control}
+          render={({ field }) => (
+            <SearchableSelect value={field.value} onChange={(id) => field.onChange(id)} loadOptions={loadDrivers} placeholder="Выберите водителя" />
+          )} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-sm text-foreground">Перевозчик</Label>
+        <Controller name="carrierId" control={control}
+          render={({ field }) => (
+            <SearchableSelect value={field.value} onChange={(id) => field.onChange(id)} loadOptions={loadCarriers} placeholder="Выберите перевозчика" />
+          )} />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>Отмена</Button>
+        <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          {mutation.isPending ? 'Создание...' : 'Создать'}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
 export function PlumbLogFormView({ applicationId }: Props) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -72,43 +392,16 @@ export function PlumbLogFormView({ applicationId }: Props) {
     enabled: isConcrete,
   })
 
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ['companies', { isActive: true }],
-    queryFn: () => getCompanies({ isActive: true }),
-    staleTime: 60_000,
-    enabled: !isConcrete,
-  })
-
-  const { data: customers = [] } = useQuery({
-    queryKey: ['companies-own', { isActive: true }],
-    queryFn: () => getCompanies({ isActive: true, function: 'OWN' }),
-    staleTime: 60_000,
-    enabled: !isConcrete,
-  })
-
-  const { data: materials = [] } = useQuery({
-    queryKey: ['materials', { isActive: true }],
-    queryFn: () => getMaterials({ isActive: true }),
-    staleTime: 60_000,
-    enabled: !isConcrete,
-  })
-
   const { data: transports = [] } = useQuery({
     queryKey: ['transports', { isActive: true }],
     queryFn: () => getTransports({ isActive: true }),
     staleTime: 60_000,
   })
 
-  const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', { isActive: true }],
-    queryFn: () => getDrivers({ isActive: true }),
-    staleTime: 60_000,
-  })
-
   const { data: bsuList = [] } = useQuery({
-    queryKey: ['bsu', { isActive: true, companyId: supplierId }],
-    queryFn: () => getBsuList({ isActive: true, companyId: supplierId }),
-    enabled: isConcrete && !!supplierId,
+    queryKey: ['bsu', { isActive: true }],
+    queryFn: () => getBsuList({ isActive: true }),
+    enabled: isConcrete,
     staleTime: 60_000,
   })
 
@@ -117,13 +410,6 @@ export function PlumbLogFormView({ applicationId }: Props) {
     queryFn: () => getNomenclatures({ isActive: true }),
     staleTime: 60_000,
     enabled: !isConcrete,
-  })
-
-  const { data: constructions = [] } = useQuery({
-    queryKey: ['constructions', { isActive: true }],
-    queryFn: () => getConstructions({ isActive: true }),
-    staleTime: 60_000,
-    enabled: isConcrete,
   })
 
   useEffect(() => {
@@ -144,18 +430,68 @@ export function PlumbLogFormView({ applicationId }: Props) {
     }
   }, [transportId, transports, setValue])
 
-  const selectedTransport = transports.find((t) => t.id === transportId)
-
   const [tare, setTare] = useState('')
   const [gross, setGross] = useState('')
   const [tareConfirmed, setTareConfirmed] = useState(false)
   const [grossConfirmed, setGrossConfirmed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [showCreateSupplier, setShowCreateSupplier] = useState(false)
+  const [showCreateCustomer, setShowCreateCustomer] = useState(false)
+  const [showCreateMaterial, setShowCreateMaterial] = useState(false)
+  const [showCreateDriver, setShowCreateDriver] = useState(false)
+  const [showCreateTransport, setShowCreateTransport] = useState(false)
+  const [showCreateCarrier, setShowCreateCarrier] = useState(false)
+  const [showCreateConstruction, setShowCreateConstruction] = useState(false)
+
+  // Поставщик — все активные компании; Заказчик — только наши ТОО (OWN); Материал — только тип «Прочее».
+  const loadSuppliers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCompanies({ isActive: true, search }).then((l) => l.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+  const loadCustomers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCompanies({ isActive: true, function: 'OWN', search }).then((l) => l.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+  const loadMaterials = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getMaterials({ isActive: true, filterType: 'OTHER', search }).then((l) => l.map((m) => ({ id: m.id, label: m.name }))),
+    [],
+  )
+  const loadCarriers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCarriers({ isActive: true, search }).then((l) => l.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+  const loadDrivers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getDrivers({ isActive: true, search }).then((l) => l.map((d) => ({ id: d.id, label: d.fullName }))),
+    [],
+  )
+  const loadTransports = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getTransports({ isActive: true, search }).then((l) => l.map((t) => ({ id: t.id, label: t.plateNumber }))),
+    [],
+  )
+  const loadConstructions = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getConstructions({ isActive: true, search }).then((l) => l.map((c) => ({ id: c.id, label: c.name }))),
+    [],
+  )
+
   useEffect(() => { setTareConfirmed(false) }, [tare])
   useEffect(() => { setGrossConfirmed(false) }, [gross])
 
+  // Нетто = брутто − тара; брутто ≤ тары физически невозможно.
+  const grossInvalid = !!tare && !!gross && Number(gross) <= Number(tare)
+
   const handleCreate = async (formData: CreatePlumbLogDto) => {
+    if (grossInvalid) {
+      toast.error(`Брутто (${gross} кг) должно быть больше тары (${tare} кг)`)
+      return
+    }
     setIsSubmitting(true)
     try {
       const created = await createPlumbLog(formData)
@@ -239,14 +575,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                       control={control}
                       rules={{ required: true }}
                       render={({ field }) => (
-                        <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                          <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                            <SelectValue placeholder="Выберите поставщика" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {suppliers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          key={field.value ?? 'empty'}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadSuppliers}
+                          placeholder="Выберите поставщика"
+                          onCreateNew={() => setShowCreateSupplier(true)}
+                          createLabel="Добавить поставщика"
+                        />
                       )}
                     />
                     {errors.supplierId && <p className="text-xs text-destructive">Обязательное поле</p>}
@@ -258,14 +595,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                       control={control}
                       rules={{ required: true }}
                       render={({ field }) => (
-                        <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                          <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                            <SelectValue placeholder="Выберите заказчика" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {customers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          key={field.value ?? 'empty'}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadCustomers}
+                          placeholder="Выберите заказчика"
+                          onCreateNew={() => setShowCreateCustomer(true)}
+                          createLabel="Добавить заказчика"
+                        />
                       )}
                     />
                     {errors.customerId && <p className="text-xs text-destructive">Обязательное поле</p>}
@@ -277,14 +615,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                       control={control}
                       rules={{ required: true }}
                       render={({ field }) => (
-                        <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                          <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                            <SelectValue placeholder="Выберите материал" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {materials.map((m) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          key={field.value ?? 'empty'}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadMaterials}
+                          placeholder="Выберите материал"
+                          onCreateNew={() => setShowCreateMaterial(true)}
+                          createLabel="Добавить материал"
+                        />
                       )}
                     />
                     {errors.materialId && <p className="text-xs text-destructive">Обязательное поле</p>}
@@ -304,16 +643,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                   control={control}
                   rules={{ required: true }}
                   render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                        <SelectValue placeholder="Выберите транспорт" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transports.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>{t.plateNumber}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      key={field.value ?? 'empty'}
+                      value={field.value}
+                      onChange={(id) => field.onChange(id)}
+                      loadOptions={loadTransports}
+                      placeholder="Выберите транспорт"
+                      onCreateNew={() => setShowCreateTransport(true)}
+                      createLabel="Добавить транспорт"
+                    />
                   )}
                 />
                 {errors.transportId && <p className="text-xs text-destructive">Обязательное поле</p>}
@@ -324,25 +662,36 @@ export function PlumbLogFormView({ applicationId }: Props) {
                   name="driverId"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
-                      <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                        <SelectValue placeholder="Водитель" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Не выбран</SelectItem>
-                        {drivers.map((d) => (
-                          <SelectItem key={d.id} value={String(d.id)}>{d.fullName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      key={field.value ?? 'empty'}
+                      value={field.value}
+                      onChange={(id) => field.onChange(id)}
+                      loadOptions={loadDrivers}
+                      placeholder="Выберите водителя"
+                      onCreateNew={() => setShowCreateDriver(true)}
+                      createLabel="Добавить водителя"
+                    />
                   )}
                 />
               </Field>
 
-              <ReadonlyField
-                label="Перевозчик"
-                value={selectedTransport?.carrier?.name ?? '—'}
-              />
+              <Field label="Перевозчик">
+                <Controller
+                  name="carrierId"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      key={field.value ?? 'empty'}
+                      value={field.value}
+                      onChange={(id) => field.onChange(id)}
+                      loadOptions={loadCarriers}
+                      placeholder="Выберите перевозчика"
+                      onCreateNew={() => setShowCreateCarrier(true)}
+                      createLabel="Добавить перевозчика"
+                    />
+                  )}
+                />
+              </Field>
             </div>
           </div>
 
@@ -459,15 +808,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                       name="constructionId"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value ? String(field.value) : 'none'} onValueChange={(v) => field.onChange(v === 'none' ? undefined : Number(v))}>
-                          <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                            <SelectValue placeholder="Не выбрана" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Не выбрана</SelectItem>
-                            {constructions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          key={field.value ?? 'empty'}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadConstructions}
+                          placeholder="Не выбрана"
+                          onCreateNew={() => setShowCreateConstruction(true)}
+                          createLabel="Добавить конструкцию"
+                        />
                       )}
                     />
                   </Field>
@@ -591,12 +940,17 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     type="button"
                     variant="secondary"
                     className="h-9 shrink-0"
-                    disabled={!gross || !tare || grossConfirmed}
+                    disabled={!gross || !tare || grossInvalid || grossConfirmed}
                     onClick={() => setGrossConfirmed(true)}
                   >
                     {grossConfirmed ? '✓ Брутто' : 'Взвесить брутто'}
                   </Button>
                 </div>
+                {grossInvalid && (
+                  <p className="text-xs text-destructive">
+                    Брутто должно быть больше тары ({Number(tare).toLocaleString('ru-RU')} кг)
+                  </p>
+                )}
               </div>
             </div>
 
@@ -624,6 +978,64 @@ export function PlumbLogFormView({ applicationId }: Props) {
           </Button>
         </div>
       </form>
+
+      <CreateInlineDialog open={showCreateSupplier} onOpenChange={setShowCreateSupplier} title="Новый поставщик">
+        <CreateCompanyForm
+          defaultFunction="SUPPLIER"
+          onCreated={(company) => { setValue('supplierId', company.id); setShowCreateSupplier(false) }}
+          onCancel={() => setShowCreateSupplier(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateCustomer} onOpenChange={setShowCreateCustomer} title="Новый заказчик">
+        <CreateCompanyForm
+          defaultFunction="OWN"
+          onCreated={(company) => { setValue('customerId', company.id); setShowCreateCustomer(false) }}
+          onCancel={() => setShowCreateCustomer(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateMaterial} onOpenChange={setShowCreateMaterial} title="Новый материал">
+        <CreateMaterialForm
+          onCreated={(material) => { setValue('materialId', material.id); setShowCreateMaterial(false) }}
+          onCancel={() => setShowCreateMaterial(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateDriver} onOpenChange={setShowCreateDriver} title="Новый водитель">
+        <CreateDriverForm
+          onCreated={(driver) => { setValue('driverId', driver.id); setShowCreateDriver(false) }}
+          onCancel={() => setShowCreateDriver(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateTransport} onOpenChange={setShowCreateTransport} title="Новый транспорт">
+        <CreateTransportForm
+          onCreated={(transport, driverId, carrierId) => {
+            // setValue('transportId') не находит свежесозданный транспорт в кэше списка —
+            // автозаполнение через useEffect не сработает, поэтому проставляем явно
+            setValue('transportId', transport.id)
+            if (driverId) setValue('driverId', driverId)
+            if (carrierId) setValue('carrierId', carrierId)
+            setShowCreateTransport(false)
+          }}
+          onCancel={() => setShowCreateTransport(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateCarrier} onOpenChange={setShowCreateCarrier} title="Новый перевозчик">
+        <CreateCarrierForm
+          onCreated={(carrier) => { setValue('carrierId', carrier.id); setShowCreateCarrier(false) }}
+          onCancel={() => setShowCreateCarrier(false)}
+        />
+      </CreateInlineDialog>
+
+      <CreateInlineDialog open={showCreateConstruction} onOpenChange={setShowCreateConstruction} title="Новая конструкция">
+        <CreateConstructionForm
+          onCreated={(construction) => { setValue('constructionId', construction.id); setShowCreateConstruction(false) }}
+          onCancel={() => setShowCreateConstruction(false)}
+        />
+      </CreateInlineDialog>
     </div>
   )
 }

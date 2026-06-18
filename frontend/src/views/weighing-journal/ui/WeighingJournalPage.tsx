@@ -13,6 +13,7 @@ import { getPlumbLogs } from '@/entities/plumb-log/api/plumbLogApi'
 import { getCompanies } from '@/entities/company/api/companyApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import type { PlumbLog } from '@/entities/plumb-log/model/types'
+import { toLocalDateString } from '@/shared/utils/date'
 
 const fmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -36,7 +37,7 @@ function sumTonnes(logs: PlumbLog[], field: keyof Pick<PlumbLog, 'tare' | 'gross
 
 export function WeighingJournalPage() {
   const router = useRouter()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = toLocalDateString(new Date())
 
   const [dateFrom, setDateFrom] = useState(today)
   const [dateTo, setDateTo] = useState(today)
@@ -46,8 +47,8 @@ export function WeighingJournalPage() {
   const [materialId, setMaterialId] = useState<number | undefined>()
 
   const { data: plumbLogs = [], isLoading } = useQuery({
-    queryKey: plumbLogKeys.list({ dateFrom, dateTo, isActive, supplierId, materialId }),
-    queryFn: () => getPlumbLogs({ dateFrom, dateTo, isActive, supplierId, materialId }),
+    queryKey: plumbLogKeys.list({ dateFrom, dateTo, isActive, supplierId, materialId, standalone: true }),
+    queryFn: () => getPlumbLogs({ dateFrom, dateTo, isActive, supplierId, materialId, standalone: true }),
   })
 
   const { data: companies = [] } = useQuery({

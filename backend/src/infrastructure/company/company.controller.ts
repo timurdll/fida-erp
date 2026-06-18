@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../domain/user/user.entity';
+import { CompanyFunction } from '../../domain/company/company.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('companies')
@@ -13,9 +14,13 @@ export class CompanyController {
   constructor(private readonly service: CompanyService) {}
 
   @Get()
-  findAll(@Query('isActive') isActive?: string, @Query('search') search?: string) {
+  findAll(
+    @Query('isActive') isActive?: string,
+    @Query('search') search?: string,
+    @Query('function') fn?: CompanyFunction,
+  ) {
     const active = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-    return this.service.findAll({ isActive: active, search });
+    return this.service.findAll({ isActive: active, search, function: fn });
   }
 
   @Get(':id')

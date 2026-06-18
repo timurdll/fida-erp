@@ -20,4 +20,5 @@ export interface IApplicationRepository {
   update(id: number, data: UpdateApplicationDto): Promise<ApplicationEntity>;
   complete(id: number): Promise<ApplicationEntity>;
   deactivate(id: number): Promise<ApplicationEntity>;
+  updateStatus(id: number, status: ApplicationStatus): Promise<void>;
 }

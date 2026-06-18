@@ -15,6 +15,7 @@ import { ApplicationModule } from './infrastructure/application/application.modu
 import { BsuModule } from './infrastructure/bsu/bsu.module';
 import { NomenclatureModule } from './infrastructure/nomenclature/nomenclature.module';
 import { PlumbLogModule } from './infrastructure/plumb-log/plumb-log.module';
+import { ReportModule } from './infrastructure/report/report.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { PlumbLogModule } from './infrastructure/plumb-log/plumb-log.module';
     BsuModule,
     NomenclatureModule,
     PlumbLogModule,
+    ReportModule,
   ],
 })
 export class AppModule {}

@@ -1,8 +1,18 @@
 'use client'
-import { useParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { PlanApplicationView } from '@/views/applications-plan/ui/PlanApplicationView'
 
-export default function Page() {
+function PlanApplicationViewPage() {
   const { id } = useParams<{ id: string }>()
-  return <PlanApplicationView id={Number(id)} />
+  const searchParams = useSearchParams()
+  return <PlanApplicationView id={Number(id)} backDate={searchParams.get('backDate') ?? undefined} />
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <PlanApplicationViewPage />
+    </Suspense>
+  )
 }

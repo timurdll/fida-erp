@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -35,15 +35,10 @@ import { getApplications, deactivateApplication, completeApplication } from '@/e
 import type { Application } from '@/entities/application/model/types'
 import { APP_STATUS_LABEL } from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
+import { printApplicationsPlan } from '../lib/printPlan'
+import { toLocalDateString as toLocalDateStr } from '@/shared/utils/date'
 
 // ─── date helpers (no date-fns) ──────────────────────────────────────────────
-
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 function addDays(d: Date, n: number): Date {
   const r = new Date(d)
@@ -74,13 +69,6 @@ function formatWeekRange(monday: Date): string {
 
 // ─── status helpers ───────────────────────────────────────────────────────────
 
-const STATUS_DOT_COLOR: Record<Application['status'], string> = {
-  PENDING: 'var(--muted-foreground)',
-  IN_PROGRESS: 'var(--warning)',
-  COMPLETED: 'var(--success)',
-  CANCELLED: 'var(--destructive)',
-}
-
 const CARD_CLASS: Record<Application['status'], string> = {
   PENDING: 'bg-primary/15 border-primary/30 hover:bg-primary/20',
   IN_PROGRESS: 'bg-warning/15 border-warning/30 hover:bg-warning/20',
@@ -95,11 +83,29 @@ const BADGE_CLASS: Record<Application['status'], string> = {
   CANCELLED: 'bg-destructive/20 text-destructive',
 }
 
-function StatusDot({ status }: { status: Application['status'] }) {
+// Визуальный статус с учётом прогресса (не только сырого application.status)
+const DISPLAY_COLOR_VAR = {
+  green: 'var(--success)',
+  red: 'var(--destructive)',
+  orange: 'var(--warning)',
+  blue: 'var(--primary)',
+  gray: 'var(--muted-foreground)',
+} as const
+
+function getDisplayStatus(app: Application) {
+  if (app.status === 'COMPLETED') return { label: 'Выполнена', color: 'green' as const }
+  if (app.status === 'CANCELLED') return { label: 'Отменена', color: 'red' as const }
+  if ((app.progress?.loadingVolume ?? 0) > 0) return { label: 'На погрузке', color: 'orange' as const }
+  if ((app.progress?.shippedVolume ?? 0) > 0) return { label: 'В процессе', color: 'blue' as const }
+  return { label: 'Ожидает', color: 'gray' as const }
+}
+
+function DisplayStatusDot({ app }: { app: Application }) {
+  const { label, color } = getDisplayStatus(app)
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_DOT_COLOR[status] }} />
-      {APP_STATUS_LABEL[status]}
+      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DISPLAY_COLOR_VAR[color] }} />
+      {label}
     </span>
   )
 }
@@ -130,7 +136,7 @@ function CalendarCell({
   time: string
   dateStr: string
   expanded: boolean
-  onAppClick: (id: number) => void
+  onAppClick: (id: number, date: string) => void
   onAddClick: (date: string, time: string) => void
 }) {
   return (
@@ -201,7 +207,7 @@ function CalendarCell({
                   variant="ghost"
                   size="sm"
                   className="flex-1 justify-start"
-                  onClick={() => onAppClick(app.id)}
+                  onClick={() => onAppClick(app.id, dateStr)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   Просмотр
@@ -235,7 +241,7 @@ function CalendarCell({
 
 interface CalendarViewProps {
   applications: Application[]
-  onApplicationClick: (id: number) => void
+  onApplicationClick: (id: number, date: string) => void
   onAddClick: (date: string, time: string) => void
 }
 
@@ -439,10 +445,17 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
 export function ApplicationsPlanPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const today = toLocalDateStr(new Date())
-  const [date, setDate] = useState(today)
+  const searchParams = useSearchParams()
+  // Дата хранится в URL (?date=YYYY-MM-DD), чтобы переживать переход на карточку и обратно
+  const date = searchParams.get('date') ?? toLocalDateStr(new Date())
   const [showInactive, setShowInactive] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+
+  // replace, не push — чтобы смена даты не засоряла историю
+  const handleDateChange = useCallback(
+    (next: string) => router.replace(`/plan?date=${next}`, { scroll: false }),
+    [router],
+  )
 
   const { data: applications = [], isLoading } = useQuery({
     queryKey: applicationKeys.list({
@@ -529,7 +542,7 @@ export function ApplicationsPlanPage() {
           {viewMode === 'list' && (
             <DatePickerButton
               value={date}
-              onChange={setDate}
+              onChange={handleDateChange}
               className="w-[180px]"
             />
           )}
@@ -561,7 +574,11 @@ export function ApplicationsPlanPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button
+            variant="outline"
+            disabled={isLoading || applications.length === 0}
+            onClick={() => printApplicationsPlan(applications, date)}
+          >
             <Printer className="mr-2 h-4 w-4" />
             Распечатать
           </Button>
@@ -579,7 +596,7 @@ export function ApplicationsPlanPage() {
       {viewMode === 'calendar' && (
         <CalendarView
           applications={applications}
-          onApplicationClick={(id) => router.push('/plan/view/' + id)}
+          onApplicationClick={(id, d) => router.push(`/plan/view/${id}?backDate=${d}`)}
           onAddClick={(date, time) => router.push(`/plan/add?date=${date}&time=${time}`)}
         />
       )}
@@ -625,10 +642,10 @@ export function ApplicationsPlanPage() {
                           index % 2 === 1 && 'bg-white/[0.02]',
                           !app.isActive && 'opacity-50',
                         )}
-                        onClick={() => router.push('/plan/view/' + app.id)}
+                        onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}
                       >
                         <td className="px-4 py-3">
-                          <StatusDot status={app.status} />
+                          <DisplayStatusDot app={app} />
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-foreground">
                           {app.deliveryTime ?? '—'}

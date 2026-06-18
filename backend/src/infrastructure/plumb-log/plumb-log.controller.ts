@@ -34,6 +34,7 @@ export class PlumbLogController {
     @Query('customerId') customerId?: string,
     @Query('materialId') materialId?: string,
     @Query('applicationId') applicationId?: string,
+    @Query('standalone') standalone?: string,
   ) {
     return this.service.findAll({
       dateFrom,
@@ -44,6 +45,7 @@ export class PlumbLogController {
       customerId: customerId ? Number(customerId) : undefined,
       materialId: materialId ? Number(materialId) : undefined,
       applicationId: applicationId ? Number(applicationId) : undefined,
+      standalone: standalone === 'true' ? true : undefined,
     });
   }
 

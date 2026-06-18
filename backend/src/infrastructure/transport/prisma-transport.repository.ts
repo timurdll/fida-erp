@@ -51,10 +51,11 @@ export class PrismaTransportRepository implements ITransportRepository {
   }
 
   async create(data: CreateTransportDto): Promise<TransportEntity> {
-    const { driverId, carrierId, ...rest } = data;
+    const { driverId, carrierId, tare, ...rest } = data;
     return this.map(await this.prisma.transport.create({
       data: {
         ...rest,
+        tare: tare ?? 0,
         ...(driverId ? { driver: { connect: { id: driverId } } } : {}),
         ...(carrierId ? { carrier: { connect: { id: carrierId } } } : {}),
       } as any,

@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../domain/user/user.entity';
+import { MaterialType } from '../../domain/material/material.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('materials')
@@ -13,9 +14,14 @@ export class MaterialController {
   constructor(private readonly service: MaterialService) {}
 
   @Get()
-  findAll(@Query('isActive') isActive?: string, @Query('search') search?: string) {
+  findAll(
+    @Query('isActive') isActive?: string,
+    @Query('search') search?: string,
+    @Query('excludeType') excludeType?: MaterialType,
+    @Query('filterType') filterType?: MaterialType,
+  ) {
     const active = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-    return this.service.findAll({ isActive: active, search });
+    return this.service.findAll({ isActive: active, search, excludeType, filterType });
   }
 
   @Get(':id')

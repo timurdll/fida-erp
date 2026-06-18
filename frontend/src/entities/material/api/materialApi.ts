@@ -1,10 +1,12 @@
 import { apiFetch } from '@/shared/api/client'
-import type { Material, CreateMaterialDto, UpdateMaterialDto } from '../model/types'
+import type { Material, CreateMaterialDto, UpdateMaterialDto, MaterialType } from '../model/types'
 
-export function getMaterials(params?: { isActive?: boolean; search?: string }): Promise<Material[]> {
+export function getMaterials(params?: { isActive?: boolean; search?: string; excludeType?: MaterialType; filterType?: MaterialType }): Promise<Material[]> {
   const q = new URLSearchParams()
   if (params?.isActive !== undefined) q.set('isActive', String(params.isActive))
   if (params?.search) q.set('search', params.search)
+  if (params?.excludeType) q.set('excludeType', params.excludeType)
+  if (params?.filterType) q.set('filterType', params.filterType)
   return apiFetch<Material[]>(`/materials${q.toString() ? `?${q}` : ''}`)
 }
 

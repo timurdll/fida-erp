@@ -80,4 +80,5 @@ export interface PlumbLogFilters {
   customerId?: number
   materialId?: number
   applicationId?: number
+  standalone?: boolean
 }
