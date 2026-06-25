@@ -13,23 +13,14 @@ import {
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { useAuthStore } from '@/shared/store/auth.store'
-import type { UserRole } from '@/shared/types/user'
 
-const REPORT_ROLES: UserRole[] = [
-  'ADMIN',
-  'DEPUTY_DIRECTOR',
-  'ACCOUNTANT',
-  'FINANCIAL_DIRECTOR',
-  'FOUNDER',
-]
-
-const navigation: { name: string; href: string; icon: React.ElementType; allowedRoles?: UserRole[] }[] = [
+const navigation: { name: string; href: string; icon: React.ElementType }[] = [
   { name: 'Журнал заявок', href: '/journal', icon: FileText },
   { name: 'План заявок', href: '/plan', icon: Calendar },
   { name: 'Журнал отвесов', href: '/plumb', icon: Scale },
   { name: 'Пользователи', href: '/users', icon: Users },
   { name: 'Справочники', href: '/dictionaries', icon: BookOpen },
-  { name: 'Отчёты', href: '/reports', icon: BarChart2, allowedRoles: REPORT_ROLES },
+  { name: 'Отчёты', href: '/reports', icon: BarChart2 },
 ]
 
 export function Sidebar() {
@@ -51,9 +42,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4">
           <ul className="space-y-1">
-            {navigation.filter((item) =>
-              !item.allowedRoles || (user?.role && item.allowedRoles.includes(user.role as UserRole))
-            ).map((item) => {
+            {navigation.map((item) => {
               const isActive = pathname?.startsWith(item.href) ?? false
               return (
                 <li key={item.name}>

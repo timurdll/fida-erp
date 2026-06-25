@@ -14,10 +14,7 @@ import { CreatePlumbLogDto } from '../../application/plumb-log/dto/create-plumb-
 import { UpdatePlumbLogDto } from '../../application/plumb-log/dto/update-plumb-log.dto';
 import { WeighDto } from '../../application/plumb-log/dto/weigh.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole } from '../../domain/user/user.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('plumb-logs')
@@ -55,22 +52,16 @@ export class PlumbLogController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR, UserRole.DISPATCHER)
-  @UseGuards(RolesGuard)
   create(@Body() dto: CreatePlumbLogDto, @CurrentUser() user: any) {
     return this.service.create(dto, user.id);
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR, UserRole.DISPATCHER)
-  @UseGuards(RolesGuard)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePlumbLogDto) {
     return this.service.update(id, dto);
   }
 
   @Patch(':id/weigh-tare')
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR, UserRole.DISPATCHER)
-  @UseGuards(RolesGuard)
   weighTare(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: WeighDto,
@@ -80,8 +71,6 @@ export class PlumbLogController {
   }
 
   @Patch(':id/weigh-gross')
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR, UserRole.DISPATCHER)
-  @UseGuards(RolesGuard)
   weighGross(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: WeighDto,
@@ -91,15 +80,11 @@ export class PlumbLogController {
   }
 
   @Post(':id/return')
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR, UserRole.DISPATCHER)
-  @UseGuards(RolesGuard)
   createReturn(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
     return this.service.createReturn(id, user.id);
   }
 
   @Patch(':id/deactivate')
-  @Roles(UserRole.ADMIN, UserRole.DEPUTY_DIRECTOR)
-  @UseGuards(RolesGuard)
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.service.deactivate(id);
   }

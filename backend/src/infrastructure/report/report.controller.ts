@@ -16,18 +16,8 @@ import { REPORT_TYPES, ReportType } from '../../domain/report/report.types';
 import type { ReportResult } from '../../domain/report/report.types';
 import type { ReportFilters } from '../../domain/report/i-report.repository';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../../domain/user/user.entity';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(
-  UserRole.ADMIN,
-  UserRole.DEPUTY_DIRECTOR,
-  UserRole.ACCOUNTANT,
-  UserRole.FINANCIAL_DIRECTOR,
-  UserRole.FOUNDER,
-)
+@UseGuards(JwtAuthGuard)
 @Controller('reports')
 export class ReportController {
   constructor(
