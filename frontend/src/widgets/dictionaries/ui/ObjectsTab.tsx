@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { usePagination } from '@/shared/lib/use-pagination'
+import { TablePagination } from '@/shared/ui/table-pagination'
 import { Search, Plus, MoreHorizontal, Pencil, Power } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
@@ -58,6 +60,8 @@ export function ObjectsTab() {
     catch (e: any) { toast.error(e.message || 'Ошибка деактивации') }
   }
 
+  const { page, setPage, pageItems, total, pageCount, from, to } = usePagination(items, 20, search + '|' + statusFilter)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -92,7 +96,7 @@ export function ObjectsTab() {
             </tr></thead>
             <tbody>
               {items.length === 0 ? <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">Ничего не найдено</td></tr>
-                : items.map((item, i) => (
+                : pageItems.map((item, i) => (
                   <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
                     onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
@@ -115,6 +119,8 @@ export function ObjectsTab() {
           </table>
         )}
       </div>
+      <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
+
       <DictionarySheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={editingItem ? 'Редактировать объект' : 'Добавить объект'} onSave={() => formRef.current?.requestSubmit()} isSaving={saving}>
         <ObjectForm defaultValues={editingItem} onSubmit={handleSave} formRef={formRef} />
       </DictionarySheet>

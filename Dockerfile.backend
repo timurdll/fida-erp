@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# ──────────────────────────────────────────────────────────────────────────────
+# FIDA ERP — backend (NestJS + Prisma 7)
+# Build context = ./backend (см. docker-compose.prod.yml)
+# Debian-slim (не alpine) — Prisma query engine надёжнее работает на glibc/openssl.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: builder ──────────────────────────────────────────────────────────
+FROM node:24-slim AS builder
+WORKDIR /app
+
+# Сначала только манифесты + prisma — лучше кешируется слой npm ci
+COPY package.json package-lock.json ./
+COPY prisma.config.ts ./
+COPY prisma ./prisma
+RUN npm ci
+
+# Остальной исходник → генерация клиента Prisma → сборка Nest (dist/)
+COPY . .
+RUN npx prisma generate && npm run build
+
+# ── Stage 2: runner ───────────────────────────────────────────────────────────
+FROM node:24-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Prod-зависимости приложения.
+# prisma (CLI) + ts-node + typescript нужны как операционный инструмент:
+#   `prisma migrate deploy` и `prisma db seed` запускаются через `docker exec backend ...`.
+# Сам toolchain сборки (nest-cli, eslint, jest) в образ НЕ попадает.
+COPY package.json package-lock.json ./
+COPY prisma.config.ts ./
+COPY prisma ./prisma
+RUN npm ci --omit=dev \
+ && npm install --no-save prisma@^7.8.0 ts-node@^10.9.2 typescript@^5 \
+ && npx prisma generate \
+ && npm cache clean --force
+
+# Скомпилированный код
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 3001
+CMD ["node", "dist/main"]

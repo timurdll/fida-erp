@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { usePagination } from '@/shared/lib/use-pagination'
+import { TablePagination } from '@/shared/ui/table-pagination'
 import { Search, Plus, MoreHorizontal, Pencil, Power } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
@@ -54,6 +56,8 @@ export function DeliveryMethodsTab() {
     catch (e: any) { toast.error(e.message) }
   }
 
+  const { page, setPage, pageItems, total, pageCount, from, to } = usePagination(items, 20, search + '|' + statusFilter)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -69,7 +73,7 @@ export function DeliveryMethodsTab() {
             <thead><tr className="border-b border-border"><th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Название</th><th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Тип</th><th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Примечание</th><th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Статус</th><th className="w-12 px-4 py-3" /></tr></thead>
             <tbody>
               {items.length === 0 ? <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">Ничего не найдено</td></tr>
-                : items.map((item, i) => (
+                : pageItems.map((item, i) => (
                   <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`} onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.type || '—'}</td>
@@ -82,6 +86,8 @@ export function DeliveryMethodsTab() {
           </table>
         )}
       </div>
+      <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
+
       <DictionarySheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={editingItem ? 'Редактировать способ приёмки' : 'Добавить способ приёмки'} onSave={() => formRef.current?.requestSubmit()} isSaving={saving}>
         <DeliveryMethodForm defaultValues={editingItem} onSubmit={handleSave} formRef={formRef} />
       </DictionarySheet>

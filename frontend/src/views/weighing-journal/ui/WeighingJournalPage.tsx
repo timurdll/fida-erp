@@ -14,6 +14,8 @@ import { getCompanies } from '@/entities/company/api/companyApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import type { PlumbLog } from '@/entities/plumb-log/model/types'
 import { toLocalDateString } from '@/shared/utils/date'
+import { usePagination } from '@/shared/lib/use-pagination'
+import { TablePagination } from '@/shared/ui/table-pagination'
 
 const fmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -68,6 +70,14 @@ export function WeighingJournalPage() {
     if (statusFilter === 'pending') return l.gross === null
     return true
   })
+
+  // Пагинация строк. Итого считается по всему `filtered` (статистика за день,
+  // одинаковая на каждой странице) — НЕ по срезу страницы.
+  const { page, setPage, pageItems, total, pageCount, from, to } = usePagination(
+    filtered,
+    20,
+    [dateFrom, dateTo, isActive, statusFilter, supplierId, materialId].join('|'),
+  )
 
   return (
     <div className="min-h-screen p-6">
@@ -200,7 +210,7 @@ export function WeighingJournalPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((log, i) => (
+                pageItems.map((log, i) => (
                   <tr
                     key={log.id}
                     onClick={() => router.push('/plumb/view/' + log.id)}
@@ -242,6 +252,12 @@ export function WeighingJournalPage() {
           </table>
         )}
       </div>
+
+      {!isLoading && (
+        <div className="mt-4">
+          <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
+        </div>
+      )}
     </div>
   )
 }

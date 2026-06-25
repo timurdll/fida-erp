@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# ──────────────────────────────────────────────────────────────────────────────
+# FIDA ERP — frontend (Next.js 16 App Router, client-side SPA)
+# Build context = ./frontend (см. docker-compose.prod.yml)
+# Использует output: "standalone" из next.config.ts → минимальный runtime-образ.
+#
+# ВАЖНО: NEXT_PUBLIC_API_URL встраивается в бандл на этапе BUILD (это публичная
+# переменная, запросы идут из браузера). Поэтому она передаётся как build ARG,
+# а не runtime env. Значение должно быть ПУБЛИЧНЫМ URL, не внутренним docker-хостом.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: builder ──────────────────────────────────────────────────────────
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+ARG NEXT_PUBLIC_API_URL=https://erp.fida-group.kz/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+RUN npm run build
+
+# ── Stage 2: runner ───────────────────────────────────────────────────────────
+FROM node:24-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+# Бинд на все интерфейсы внутри контейнера (иначе Next слушает только localhost)
+ENV HOSTNAME=0.0.0.0
+
+# Непривилегированный пользователь
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# standalone-сборка: server.js + минимальный node_modules; public и static — отдельно
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

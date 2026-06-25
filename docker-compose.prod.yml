@@ -1,0 +1,88 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# FIDA ERP — production stack (postgres + backend + frontend)
+# Запуск:  docker compose -f docker-compose.prod.yml up -d --build
+# Все секреты берутся из .env.production (env_file), наружу проброшены только
+# 3000/3001 на 127.0.0.1 — публичный трафик идёт через Nginx (host) + SSL.
+# Postgres наружу НЕ проброшен (доступен только внутри сети fida_net).
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fida_postgres
+    restart: always
+    env_file: .env.production # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fida_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    image: fida-erp-backend
+    container_name: fida_backend
+    restart: always
+    env_file: .env.production # DATABASE_URL / JWT_SECRET / JWT_EXPIRES_IN / PORT / FRONTEND_URL
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001" # только для Nginx на хосте
+    networks:
+      - fida_net
+    healthcheck:
+      # node:24 имеет глобальный fetch — не тащим curl/wget в slim-образ
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+      args:
+        # Публичный URL API, ВСТРАИВАЕТСЯ В БАНДЛ на этапе build (не секрет)
+        NEXT_PUBLIC_API_URL: https://erp.fida-group.kz/api
+    image: fida-erp-frontend
+    container_name: fida_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3000:3000" # только для Nginx на хосте
+    networks:
+      - fida_net
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:
+
+networks:
+  fida_net:
+    driver: bridge

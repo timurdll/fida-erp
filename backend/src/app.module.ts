@@ -16,11 +16,13 @@ import { BsuModule } from './infrastructure/bsu/bsu.module';
 import { NomenclatureModule } from './infrastructure/nomenclature/nomenclature.module';
 import { PlumbLogModule } from './infrastructure/plumb-log/plumb-log.module';
 import { ReportModule } from './infrastructure/report/report.module';
+import { HealthModule } from './infrastructure/health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     MaterialModule,

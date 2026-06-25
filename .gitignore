@@ -12,8 +12,8 @@ build/
 .next/
 out/
 
-# Prisma
-backend/prisma/migrations/
+# Migration export dump (содержит PII: телефоны, БИН компаний) — не коммитить
+scripts/migration-data/
 
 # Logs
 *.log
