@@ -106,7 +106,14 @@ export function BsuTab() {
                   >
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.address || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.company?.name || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {(() => {
+                        const cos = item.companies ?? []
+                        if (cos.length === 0) return '—'
+                        if (cos.length === 1) return cos[0].name
+                        return `${cos[0].name} +${cos.length - 1}`
+                      })()}
+                    </td>
                     <td className="px-4 py-3"><StatusBadge isActive={item.isActive} /></td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>

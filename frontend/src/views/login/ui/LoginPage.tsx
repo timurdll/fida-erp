@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { PasswordInput } from '@/shared/ui/password-input'
 import { Label } from '@/shared/ui/label'
 import { loginApi } from '@/shared/api/auth'
 import { useAuthStore } from '@/shared/store/auth.store'
@@ -13,7 +13,6 @@ import { useAuthStore } from '@/shared/store/auth.store'
 export function LoginPage() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
@@ -69,24 +68,14 @@ export function LoginPage() {
               <Label htmlFor="password" className="text-sm text-muted-foreground">
                 Пароль
               </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Введите пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 border-border bg-background-elevated pr-10 text-foreground placeholder:text-muted-foreground/60"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 border-border bg-background-elevated text-foreground placeholder:text-muted-foreground/60"
+                required
+              />
             </div>
 
             <Button

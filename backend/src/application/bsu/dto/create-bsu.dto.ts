@@ -1,11 +1,13 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateBsuDto {
   @IsString()
   name: string;
 
-  @IsInt()
-  companyId: number;
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  companyIds?: number[];
 
   @IsOptional()
   @IsString()

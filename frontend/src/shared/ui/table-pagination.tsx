@@ -14,15 +14,13 @@ interface TablePaginationProps {
   onPageChange: (page: number) => void
 }
 
-/** Номера страниц с многоточием: 1 … 3 4 5 … 42 (при <=7 страницах — все подряд). */
+/** Номера страниц: 1 … [current] … N. При <=5 страницах — все подряд. */
 function buildPages(page: number, count: number): Array<number | 'ellipsis'> {
-  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1)
+  if (count <= 5) return Array.from({ length: count }, (_, i) => i + 1)
   const items: Array<number | 'ellipsis'> = [1]
-  const left = Math.max(2, page - 1)
-  const right = Math.min(count - 1, page + 1)
-  if (left > 2) items.push('ellipsis')
-  for (let p = left; p <= right; p++) items.push(p)
-  if (right < count - 1) items.push('ellipsis')
+  if (page > 2) items.push('ellipsis')
+  if (page !== 1 && page !== count) items.push(page)
+  if (page < count - 1) items.push('ellipsis')
   items.push(count)
   return items
 }

@@ -74,7 +74,10 @@ import type { IPlumbLogRepository } from '../../domain/plumb-log/i-plumb-log.rep
 **Auth:** `POST /api/auth/login` → `{ accessToken, user }`, `GET /api/auth/me`
 Декораторы: `JwtAuthGuard`, `RolesGuard`, `@Roles()`, `@CurrentUser()`
 
-**Users:** `GET/POST/PATCH/DELETE /api/users` — создание/редактирование только `ADMIN | DEPUTY_DIRECTOR`
+**Users:** `GET/POST/PATCH/DELETE /api/users`, `PATCH /api/users/me/password`
+- Создание (`POST`) и деактивация (`DELETE :id`) — только `ADMIN`
+- Редактирование (`PATCH :id`) и просмотр (`GET`) — любой авторизованный
+- Смена своего пароля (`PATCH me/password`, body `{ currentPassword, newPassword }` min 6) — любой авторизованный; неверный текущий пароль → 400
 
 **Applications:** `GET/POST /api/applications`, `PATCH /api/applications/:id`, `PATCH /api/applications/:id/complete`, `PATCH /api/applications/:id/deactivate`
 - Создание/редактирование: `ADMIN | DEPUTY_DIRECTOR | SALES_HEAD | MANAGER`

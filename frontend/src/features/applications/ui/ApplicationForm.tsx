@@ -47,8 +47,8 @@ function formatDisplayDate(d: Date): string {
   return d.toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const HOURS = Array.from({ length: 17 }, (_, i) => String(i + 6).padStart(2, '0'))
-const MINUTES = ['00', '15', '30', '45']
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -556,7 +556,7 @@ export function ApplicationForm({
                         </Select>
                       </div>
                       <span className="text-muted-foreground font-medium">:</span>
-                      <Select value={mm} onValueChange={(v) => field.onChange(`${hh || '06'}:${v}`)}>
+                      <Select value={mm} onValueChange={(v) => field.onChange(`${hh || '00'}:${v}`)}>
                         <SelectTrigger className="w-20 h-9 bg-background-elevated border-border">
                           <SelectValue placeholder="Мин" />
                         </SelectTrigger>
