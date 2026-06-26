@@ -10,9 +10,14 @@ import {
   BookOpen,
   BarChart2,
   LogOut,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { useAuthStore } from '@/shared/store/auth.store'
+import { useTheme } from '@/shared/lib/useTheme'
+import { Button } from '@/shared/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/ui/tooltip'
 
 const navigation: { name: string; href: string; icon: React.ElementType }[] = [
   { name: 'Журнал заявок', href: '/journal', icon: FileText },
@@ -27,6 +32,8 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { clearAuth, user } = useAuthStore()
+  const { theme, toggleTheme } = useTheme()
+  const themeLabel = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-[220px] border-r border-border bg-sidebar">
@@ -72,13 +79,29 @@ export function Sidebar() {
               <p className="text-xs text-muted-foreground truncate">{user.login}</p>
             </div>
           )}
-          <button
-            onClick={() => { clearAuth(); router.push('/login') }}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            Выйти
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { clearAuth(); router.push('/login') }}
+              className="flex flex-1 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              Выйти
+            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  aria-label={themeLabel}
+                  className="shrink-0 text-muted-foreground hover:text-sidebar-foreground"
+                >
+                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{themeLabel}</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
     </aside>

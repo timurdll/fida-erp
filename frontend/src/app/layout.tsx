@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { Providers } from './providers'
+import { ThemeProvider } from '@/shared/lib/ThemeProvider'
 import './globals.css'
 
 const inter = Inter({
@@ -16,12 +17,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className="dark">
+    <html lang="ru" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
-        <Providers>
-          {children}
-          <Toaster richColors position="top-right" />
-        </Providers>
+        <ThemeProvider>
+          <Providers>
+            {children}
+            <Toaster richColors position="top-right" />
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   )

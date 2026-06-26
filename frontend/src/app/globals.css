@@ -85,8 +85,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Tumar One — Dark Theme (only dark mode used) */
-:root {
+/* Tumar One — Dark Theme (дефолт) */
+:root,
+.dark {
   --radius: 0.5rem;
   /* Background layers */
   --background: #101822;
@@ -159,6 +160,79 @@
   --challenge-solved: #0ab243;
 }
 
+/* Light Theme — палитра дизайнера + выведенные токены */
+.light {
+  color-scheme: light;
+  /* Background layers */
+  --background: #e9ecf2;
+  --background-secondary: #f1f3f7;
+  --background-foreground: #1a2532;
+  --background-elevated: #f8f9fb;
+  --background-elevated-2: #f4f6f9;
+  /* Card / Popover */
+  --card: #ffffff;
+  --card-foreground: #1a2532;
+  --card-elevated: #ffffff;
+  --popover: #ffffff;
+  --popover-foreground: #1a2532;
+  /* Primary (Neon Blue) */
+  --primary: #3a8dff;
+  --primary-pressed: #2f7bff;
+  --primary-foreground: #ffffff;
+  /* Secondary */
+  --secondary: #e3e7ed;
+  --secondary-foreground: #1a2532;
+  /* Muted */
+  --muted: #e3e7ed;
+  --muted-foreground: #576475;
+  /* Accent */
+  --accent: #e3e7ed;
+  --accent-foreground: #1a2532;
+  /* Error */
+  --destructive: #dc4c4c;
+  --destructive-foreground: #ffffff;
+  /* Status */
+  --info: #3a8dff;
+  --info-foreground: #1d4ed8;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #f79009;
+  --warning-foreground: #ffffff;
+  /* Border / Input / Ring */
+  --border: rgba(0, 0, 0, 0.08);
+  --input: #f2f3f5;
+  --ring: #3a8dff;
+  /* Foreground / Typography */
+  --foreground: #1a2532;
+  --text-caption: #697686;
+  --link-accent: #2563eb;
+  --text-disabled: #9ca3af;
+  /* Sidebar */
+  --sidebar: #f2f4f7;
+  --sidebar-foreground: #1a2532;
+  --sidebar-primary: #3a8dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3e7ed;
+  --sidebar-accent-foreground: #1a2532;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #3a8dff;
+  /* Charts — читаемые на светлом фоне */
+  --chart-1: #3a8dff;
+  --chart-2: #16a34a;
+  --chart-3: #f79009;
+  --chart-4: #dc4c4c;
+  --chart-5: #6366f1;
+  --grey: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-foreground: #6b7280;
+  --orange-400: #fda350;
+  --purple-500: #6366f1;
+  --green-400: #16a34a;
+  /* Challenge workspace — section accents */
+  --challenge-unsolved: #dc4c4c;
+  --challenge-solved: #16a34a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -166,7 +240,6 @@
 
   body {
     @apply bg-background text-foreground;
-    background-color: #101b22;
   }
 
   html {
@@ -187,4 +260,10 @@ input[type="time"] {
   position: relative;
   color-scheme: dark;
   accent-color: var(--primary);
+}
+
+/* В светлой теме нативный пикер дат/времени тоже светлый */
+.light input[type="date"],
+.light input[type="time"] {
+  color-scheme: light;
 }
