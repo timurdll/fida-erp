@@ -503,7 +503,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
       if (tare) {
         await weighTare(created.id, Number(tare))
       }
-      if (tare && gross) {
+      if (gross) {
         await weighGross(created.id, Number(gross))
       }
 
@@ -913,14 +913,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     value={tare}
                     onChange={(e) => {
                       setTare(e.target.value)
-                      if (!e.target.value) setGross('')
+                      if (!e.target.value && isConcrete) setGross('')
                     }}
+                    disabled={!isConcrete ? !gross : false}
                   />
                   <Button
                     type="button"
                     variant="secondary"
                     className="h-9 shrink-0"
-                    disabled={!tare || tareConfirmed}
+                    disabled={!isConcrete ? (!tare || !gross || grossInvalid || tareConfirmed) : (!tare || tareConfirmed)}
                     onClick={() => setTareConfirmed(true)}
                   >
                     {tareConfirmed ? '✓ Тара' : 'Взвесить тару'}
@@ -937,14 +938,17 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     className="bg-background-elevated border-border h-9 flex-1"
                     placeholder="Введите брутто"
                     value={gross}
-                    onChange={(e) => setGross(e.target.value)}
-                    disabled={!tare}
+                    onChange={(e) => {
+                      setGross(e.target.value)
+                      if (!e.target.value && !isConcrete) setTare('')
+                    }}
+                    disabled={isConcrete ? !tare : false}
                   />
                   <Button
                     type="button"
                     variant="secondary"
                     className="h-9 shrink-0"
-                    disabled={!gross || !tare || grossInvalid || grossConfirmed}
+                    disabled={isConcrete ? (!gross || !tare || grossInvalid || grossConfirmed) : (!gross || grossConfirmed)}
                     onClick={() => setGrossConfirmed(true)}
                   >
                     {grossConfirmed ? '✓ Брутто' : 'Взвесить брутто'}
