@@ -97,7 +97,9 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-0" align="start">
-        <Command>
+        {/* Поиск выполняется на сервере через loadOptions — отключаем клиентскую фильтрацию cmdk
+            (иначе она матчит ввод против value=id и прячет все строки) */}
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Поиск..."
             value={search}

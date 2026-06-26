@@ -306,13 +306,6 @@ export function ApplicationForm({
     queryFn: () => getCompanies({ isActive: true }),
     staleTime: 60_000,
   })
-  // Материал — без типа OTHER (в заявках только бетон/сырьё)
-  const { data: materials = [] } = useQuery({
-    queryKey: ['materials', { isActive: true, excludeType: 'OTHER' }],
-    queryFn: () => getMaterials({ isActive: true, excludeType: 'OTHER' }),
-    staleTime: 60_000,
-  })
-
   const customerName = customers.find((c) => c.id === customerId)?.name ?? ''
 
   const loadCustomers = useCallback(
@@ -326,6 +319,12 @@ export function ApplicationForm({
         ? getObjects({ companyId: customerId, isActive: true, search }).then((list) => list.map((o) => ({ id: o.id, label: o.name })))
         : Promise.resolve([]),
     [customerId],
+  )
+  // Материал — без типа OTHER (в заявках только бетон/сырьё)
+  const loadMaterials = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getMaterials({ isActive: true, excludeType: 'OTHER', search }).then((list) => list.map((m) => ({ id: m.id, label: m.name }))),
+    [],
   )
   const { data: constructions = [] } = useQuery({
     queryKey: ['constructions', { isActive: true }],
@@ -435,16 +434,12 @@ export function ApplicationForm({
                 control={control}
                 rules={{ required: true }}
                 render={({ field }) => (
-                  <Select value={field.value?.toString()} onValueChange={(v) => field.onChange(Number(v))}>
-                    <SelectTrigger className="w-full bg-background-elevated border-border h-9">
-                      <SelectValue placeholder="Выберите материал" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {materials.map((m) => (
-                        <SelectItem key={m.id} value={m.id.toString()}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={field.value}
+                    onChange={(id) => field.onChange(id)}
+                    loadOptions={loadMaterials}
+                    placeholder="Выберите материал"
+                  />
                 )}
               />
               {errors.materialId && <p className="text-xs text-destructive">Обязательное поле</p>}
