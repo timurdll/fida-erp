@@ -54,8 +54,8 @@ export class UpdatePlumbLogDto {
   sealNumber?: string;
 
   @IsOptional()
-  @IsNumber()
-  slumpCone?: number;
+  @IsString()
+  slumpCone?: string;
 
   @IsOptional()
   @IsString()

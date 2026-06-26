@@ -31,7 +31,7 @@ export class PlumbLogEntity {
   volume: number | null;
   returnVolume: number | null;
   sealNumber: string | null;
-  slumpCone: number | null;
+  slumpCone: string | null;
   deliveryType: string | null;
 
   impurity: number | null;

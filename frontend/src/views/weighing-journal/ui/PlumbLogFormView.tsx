@@ -33,6 +33,7 @@ import type { Carrier, CreateCarrierDto } from '@/entities/carrier/model/types'
 import type { Company, CreateCompanyDto, CompanyFunction, CompanyType } from '@/entities/company/model/types'
 import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model/types'
 import type { Material, CreateMaterialDto } from '@/entities/material/model/types'
+import { isValidSlumpCone } from '@/shared/utils/slumpCone'
 
 interface Props {
   applicationId?: number
@@ -418,6 +419,9 @@ export function PlumbLogFormView({ applicationId }: Props) {
       setValue('customerId', application.customerId)
       setValue('materialId', application.materialId)
       setValue('objectId', application.objectId)
+      // Осадка конуса и конструкция подтягиваются из заявки (можно переопределить вручную)
+      if (application.slumpCone != null) setValue('slumpCone', application.slumpCone)
+      if (application.constructionId != null) setValue('constructionId', application.constructionId)
     }
   }, [application, setValue])
 
@@ -775,17 +779,17 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     <Controller
                       name="slumpCone"
                       control={control}
+                      rules={{ validate: (v) => isValidSlumpCone(v) || 'Число «22» или диапазон «22-23»' }}
                       render={({ field }) => (
                         <Input
-                          type="number"
-                          step="0.1"
                           className="bg-background-elevated border-border h-9"
-                          placeholder="0"
+                          placeholder="напр. 22 или 22-23"
                           value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          onChange={(e) => field.onChange(e.target.value || undefined)}
                         />
                       )}
                     />
+                    {errors.slumpCone && <p className="text-xs text-destructive">{errors.slumpCone.message}</p>}
                   </Field>
 
                   <Field label="Тип перевозки">

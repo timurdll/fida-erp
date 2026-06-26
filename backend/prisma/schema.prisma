@@ -223,7 +223,7 @@ model Application {
   deliveryDate     DateTime          // Дата доставки
   deliveryTime     String?           // Время подачи на объект (HH:mm)
   loadingInterval  Int?              // Интервал погрузки (мин)
-  slumpCone        Float?            // Осадка конуса
+  slumpCone        String?           // Осадка конуса (число «22» или диапазон «22-23»)
   note             String?
   status           ApplicationStatus @default(PENDING)
   isActive         Boolean           @default(true)
@@ -275,7 +275,7 @@ model PlumbLog {
   volume         Float?  // Кубатура (м³)
   returnVolume   Float?  // Кубатура возврата
   sealNumber     String? // Номер пломбы
-  slumpCone      Float?  // Осадка конуса
+  slumpCone      String? // Осадка конуса (число «22» или диапазон «22-23»)
   deliveryType   String? // Тип перевозки
 
   // Данные для сырья (песок, щебень)

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/dialog'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { cn } from '@/shared/lib/utils'
+import { isValidSlumpCone } from '@/shared/utils/slumpCone'
 import { plumbLogKeys } from '@/entities/plumb-log/model/queryKeys'
 import {
   getPlumbLogById,
@@ -777,7 +778,7 @@ function PlumbLogDetail({
       documentWeight: plumbLog.documentWeight ?? undefined,
   } satisfies Partial<CreatePlumbLogDto>
 
-  const { control, handleSubmit, reset } = useForm<Partial<CreatePlumbLogDto>>({ defaultValues })
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<Partial<CreatePlumbLogDto>>({ defaultValues })
 
   const selectedTransport = transports.find((t) => t.id === plumbLog.transportId)
 
@@ -974,10 +975,12 @@ function PlumbLogDetail({
                     <div className="space-y-1.5">
                       <Label className="text-sm text-muted-foreground">Осадка конуса (см)</Label>
                       <Controller name="slumpCone" control={control}
+                        rules={{ validate: (v) => isValidSlumpCone(v) || 'Число «22» или диапазон «22-23»' }}
                         render={({ field }) => (
-                          <Input type="number" step="0.1" className="bg-background-elevated border-border h-9"
-                            value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                          <Input className="bg-background-elevated border-border h-9" placeholder="напр. 22 или 22-23"
+                            value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value || undefined)} />
                         )} />
+                      {errors.slumpCone && <p className="text-xs text-destructive">{errors.slumpCone.message}</p>}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm text-muted-foreground">Тип перевозки</Label>

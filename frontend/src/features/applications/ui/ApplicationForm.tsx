@@ -35,6 +35,7 @@ import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model
 import type { ObjectItem, CreateObjectDto } from '@/entities/object/model/types'
 import type { CreateApplicationDto } from '@/entities/application/model/types'
 import { toLocalDateString as toLocalDateStr } from '@/shared/utils/date'
+import { SLUMP_CONE_RE } from '@/shared/utils/slumpCone'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,16 +65,17 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   )
 }
 
-/** Number input with a visually-separated inline unit suffix */
+/** Number input with a visually-separated inline unit suffix (type overridable via props) */
 function UnitInput({
   unit,
   className,
+  type = 'number',
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & { unit: string }) {
   return (
     <div className={cn('flex h-9 w-full overflow-hidden rounded-md border border-border bg-background-elevated shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50', className)}>
       <input
-        type="number"
+        type={type}
         className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none disabled:cursor-not-allowed disabled:opacity-50"
         {...props}
       />
@@ -628,12 +630,16 @@ export function ApplicationForm({
             <div className="space-y-1.5">
               <Label className="text-foreground text-sm">Осадка конуса</Label>
               <UnitInput
+                type="text"
                 unit="см"
-                min="0"
-                step="0.5"
-                placeholder="—"
-                {...register('slumpCone', { valueAsNumber: true })}
+                placeholder="напр. 22 или 22-23"
+                {...register('slumpCone', {
+                  setValueAs: (v) => (v === '' || v == null ? undefined : String(v).trim()),
+                  validate: (v) =>
+                    !v || SLUMP_CONE_RE.test(String(v)) || 'Число «22» или диапазон «22-23»',
+                })}
               />
+              {errors.slumpCone && <p className="text-xs text-destructive">{errors.slumpCone.message}</p>}
             </div>
 
             <div className="space-y-1.5">

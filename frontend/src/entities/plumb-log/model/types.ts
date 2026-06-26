@@ -29,7 +29,7 @@ export interface PlumbLog {
   volume: number | null
   returnVolume: number | null
   sealNumber: string | null
-  slumpCone: number | null
+  slumpCone: string | null
   deliveryType: string | null
 
   impurity: number | null
@@ -61,7 +61,7 @@ export interface CreatePlumbLogDto {
   volume?: number
   returnVolume?: number
   sealNumber?: string
-  slumpCone?: number
+  slumpCone?: string
   deliveryType?: string
   nomenclatureId?: number
   impurity?: number

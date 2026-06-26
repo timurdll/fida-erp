@@ -50,7 +50,7 @@ export interface Application {
   deliveryDate: string
   deliveryTime: string | null
   loadingInterval: number | null
-  slumpCone?: number | null
+  slumpCone?: string | null
   note?: string | null
   status: ApplicationStatus
   isActive: boolean
@@ -70,7 +70,7 @@ export interface CreateApplicationDto {
   deliveryDate: string // YYYY-MM-DD
   deliveryTime: string // HH:mm
   loadingInterval: number
-  slumpCone?: number
+  slumpCone?: string
   note?: string
 }
 

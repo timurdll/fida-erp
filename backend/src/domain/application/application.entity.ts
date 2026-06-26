@@ -48,7 +48,7 @@ export class ApplicationEntity {
   deliveryDate: Date;
   deliveryTime: string | null;
   loadingInterval: number | null;
-  slumpCone: number | null;
+  slumpCone: string | null;
   note: string | null;
   status: ApplicationStatus;
   isActive: boolean;

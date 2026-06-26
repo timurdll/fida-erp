@@ -45,8 +45,8 @@ export class CreateApplicationDto {
   loadingInterval: number;
 
   @IsOptional()
-  @IsNumber()
-  slumpCone?: number;
+  @IsString()
+  slumpCone?: string;
 
   @IsOptional()
   @IsString()
