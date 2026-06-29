@@ -16,6 +16,7 @@ import type { PlumbLog } from '@/entities/plumb-log/model/types'
 import { toLocalDateString } from '@/shared/utils/date'
 import { usePagination } from '@/shared/lib/use-pagination'
 import { TablePagination } from '@/shared/ui/table-pagination'
+import { MobileCard } from '@/shared/ui/mobile-card'
 
 const fmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -81,7 +82,7 @@ export function WeighingJournalPage() {
 
   return (
     <div className="min-h-screen p-6">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Scale className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-semibold text-foreground">Журнал отвесов</h1>
@@ -179,8 +180,8 @@ export function WeighingJournalPage() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      {/* Table — планшет+ */}
+      <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
         {isLoading ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -215,7 +216,7 @@ export function WeighingJournalPage() {
                     key={log.id}
                     onClick={() => router.push('/plumb/view/' + log.id)}
                     className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${
-                      i % 2 === 1 ? 'bg-white/[0.02]' : ''
+                      i % 2 === 1 ? 'bg-foreground/[0.02]' : ''
                     } ${log.gross === null ? 'opacity-60' : ''}`}
                   >
                     <td className="px-4 py-3 text-sm font-medium text-primary">#{log.id}</td>
@@ -252,6 +253,46 @@ export function WeighingJournalPage() {
           </table>
         )}
       </div>
+
+      {/* Cards — мобайл */}
+      {!isLoading && (
+        <div className="md:hidden">
+          {filtered.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+              Отвесы не найдены
+            </div>
+          ) : (
+            <>
+              {pageItems.map((log) => (
+                <MobileCard
+                  key={log.id}
+                  onClick={() => router.push('/plumb/view/' + log.id)}
+                  muted={log.gross === null}
+                  title={`#${log.id} · ${kg(log.net)}`}
+                  subtitle={fmtDate(log.firstWeighingAt)}
+                  badge={log.transport?.plateNumber
+                    ? <span className="font-mono text-xs text-muted-foreground">{log.transport.plateNumber}</span>
+                    : undefined}
+                  rows={[
+                    { label: 'Поставщик', value: log.supplier?.name ?? '—' },
+                    { label: 'Заказчик', value: log.customer?.name ?? '—' },
+                    { label: 'Материал', value: log.material?.name ?? '—' },
+                  ]}
+                />
+              ))}
+              {/* Итого */}
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-sm font-semibold text-muted-foreground">Итого ({filtered.length} записей)</p>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                  <div><span className="text-xs text-muted-foreground">Тара</span><div className="font-semibold text-foreground">{sumTonnes(filtered, 'tare')}</div></div>
+                  <div><span className="text-xs text-muted-foreground">Брутто</span><div className="font-semibold text-foreground">{sumTonnes(filtered, 'gross')}</div></div>
+                  <div><span className="text-xs text-muted-foreground">Нетто</span><div className="font-semibold text-primary">{sumTonnes(filtered, 'net')}</div></div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {!isLoading && (
         <div className="mt-4">

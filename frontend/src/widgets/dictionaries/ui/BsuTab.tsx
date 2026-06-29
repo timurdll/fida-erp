@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
+import { DictionaryMobileCards } from "./DictionaryMobileCards"
 import { BsuForm } from '@/features/dictionaries/ui/BsuForm'
 import { getBsuList, createBsu, updateBsu, deactivateBsu } from '@/entities/bsu/api/bsuApi'
 import type { Bsu, CreateBsuDto } from '@/entities/bsu/model/types'
@@ -61,7 +62,7 @@ export function BsuTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -81,7 +82,7 @@ export function BsuTab() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
         {loading ? (
           <div className="p-4 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : (
@@ -101,7 +102,7 @@ export function BsuTab() {
                 : pageItems.map((item, i) => (
                   <tr
                     key={item.id}
-                    className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                    className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
                     onClick={() => { setEditingItem(item); setSheetOpen(true) }}
                   >
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
@@ -140,6 +141,19 @@ export function BsuTab() {
           </table>
         )}
       </div>
+
+      <DictionaryMobileCards
+        loading={loading}
+        items={items}
+        pageItems={pageItems}
+        getTitle={(item) => item.name}
+        getRows={(item) => [
+          { label: 'Адрес', value: item.address || '—' },
+          { label: 'Компании', value: (item.companies ?? []).map((c) => c.name).join(', ') || '—' },
+        ]}
+        onEdit={(item) => { setEditingItem(item); setSheetOpen(true) }}
+        onDeactivate={handleDeactivate}
+      />
 
       <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
 

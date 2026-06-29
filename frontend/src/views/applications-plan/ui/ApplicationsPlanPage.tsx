@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DatePickerButton } from '@/shared/ui/date-picker-button'
+import { MobileCard } from '@/shared/ui/mobile-card'
 import {
   Popover,
   PopoverContent,
@@ -251,6 +252,12 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
   todayDate.setHours(0, 0, 0, 0)
 
   const [calViewMode, setCalViewMode] = useState<'week' | 'day'>('week')
+  // На мобиле недельная сетка (8 колонок) не помещается — принудительно день-режим.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setCalViewMode('day')
+    }
+  }, [])
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(todayDate))
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(() => {
     const mon = getMonday(todayDate)
@@ -278,8 +285,8 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
     <div>
       {/* Calendar controls row */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        {/* Week/Day toggle */}
-        <div className="flex items-center rounded-lg border border-border bg-background-elevated p-1">
+        {/* Week/Day toggle — скрыт на мобиле (там всегда день-режим) */}
+        <div className="hidden items-center rounded-lg border border-border bg-background-elevated p-1 md:flex">
           <button
             onClick={() => setCalViewMode('week')}
             className={cn(
@@ -603,7 +610,8 @@ export function ApplicationsPlanPage() {
 
       {/* ── List view ── */}
       {viewMode === 'list' && (
-        <div className="rounded-lg border border-border bg-card">
+        <>
+        <div className="hidden rounded-lg border border-border bg-card md:block">
           <div className="overflow-x-auto">
             {isLoading ? (
               <div className="space-y-2 p-4">
@@ -639,7 +647,7 @@ export function ApplicationsPlanPage() {
                         key={app.id}
                         className={cn(
                           'border-b border-border cursor-pointer transition-colors hover:bg-background-elevated',
-                          index % 2 === 1 && 'bg-white/[0.02]',
+                          index % 2 === 1 && 'bg-foreground/[0.02]',
                           !app.isActive && 'opacity-50',
                         )}
                         onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}
@@ -677,6 +685,34 @@ export function ApplicationsPlanPage() {
             )}
           </div>
         </div>
+
+        {/* Cards — мобайл */}
+        <div className="md:hidden">
+          {isLoading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
+          ) : applications.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+              Заявок на выбранную дату нет
+            </div>
+          ) : (
+            applications.map((app) => (
+              <MobileCard
+                key={app.id}
+                onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}
+                muted={!app.isActive}
+                title={app.customer.name}
+                subtitle={app.object.name}
+                badge={<DisplayStatusDot app={app} />}
+                rows={[
+                  { label: 'Время', value: app.deliveryTime ?? '—' },
+                  { label: 'Материал', value: app.material.name },
+                  { label: 'Объём', value: `${app.targetVolume.toFixed(2)} м³` },
+                ]}
+              />
+            ))
+          )}
+        </div>
+        </>
       )}
     </div>
   )

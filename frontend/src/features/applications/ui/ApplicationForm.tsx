@@ -127,7 +127,7 @@ function CreateCustomerForm({
         {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-foreground text-sm">Функция</Label>
           <Controller
@@ -164,7 +164,7 @@ function CreateCustomerForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-foreground text-sm">БИН</Label>
           <Input className="bg-background-elevated border-border h-9" {...register('bin')} />
@@ -351,7 +351,7 @@ export function ApplicationForm({
         <div className="p-5">
           <SectionHeader icon={Building2} title="Общие данные" />
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
             {/* Поставщик */}
             <div className="space-y-1.5">
               <Label className="text-foreground text-sm">
@@ -453,7 +453,7 @@ export function ApplicationForm({
         <div className="p-5">
           <SectionHeader icon={Truck} title="Логистика доставки" />
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
             {/* Целевой объём */}
             <div className="space-y-1.5">
               <Label className="text-foreground text-sm">
@@ -576,7 +576,7 @@ export function ApplicationForm({
         <div className="p-5">
           <SectionHeader icon={Wrench} title="Технические детали" />
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
             {/* Row 1: Способ приёмки | Тип конструкции */}
             <div className="space-y-1.5">
               <Label className="text-foreground text-sm">Способ приёмки</Label>

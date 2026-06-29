@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePagination } from "@/shared/lib/use-pagination";
 import { TablePagination } from "@/shared/ui/table-pagination";
+import { MobileCard } from "@/shared/ui/mobile-card";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Search, Plus, MoreHorizontal, UserX, KeyRound } from "lucide-react";
@@ -373,7 +374,7 @@ export function UsersPage() {
   return (
     <div className="min-h-screen p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
             Пользователи
@@ -395,7 +396,7 @@ export function UsersPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -432,8 +433,8 @@ export function UsersPage() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-border bg-card">
+      {/* Table — планшет+ */}
+      <div className="hidden rounded-lg border border-border bg-card md:block">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             Загрузка...
@@ -468,7 +469,7 @@ export function UsersPage() {
                 pageItems.map((user, index) => (
                   <tr
                     key={user.id}
-                    className={`border-b border-border transition-colors hover:bg-background-elevated ${index % 2 === 1 ? "bg-white/[0.02]" : ""}`}
+                    className={`border-b border-border transition-colors hover:bg-background-elevated ${index % 2 === 1 ? "bg-foreground/[0.02]" : ""}`}
                   >
                     <td className="px-4 py-3">
                       <div>
@@ -521,6 +522,55 @@ export function UsersPage() {
           </table>
         )}
       </div>
+
+      {/* Cards — мобайл */}
+      <div className="md:hidden">
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">Загрузка...</div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+            Пользователи не найдены
+          </div>
+        ) : (
+          pageItems.map((user) => (
+            <MobileCard
+              key={user.id}
+              title={user.fullName}
+              subtitle={user.login}
+              badge={<RoleBadge role={user.role} />}
+              rows={[
+                { label: "Статус", value: <StatusBadge isActive={user.isActive} /> },
+                { label: "Примечание", value: user.note || "—" },
+              ]}
+              actions={
+                isAdmin && user.isActive ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => deactivateMutation.mutate(user.id)}
+                      >
+                        <UserX className="mr-2 h-4 w-4" />
+                        Деактивировать
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : undefined
+              }
+            />
+          ))
+        )}
+      </div>
+
       <div className="mt-4">
         <TablePagination
           page={page}

@@ -26,6 +26,7 @@ import type { Application, PlumbLogSummary } from '@/entities/application/model/
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { toLocalDateString } from '@/shared/utils/date'
+import { MobileCard } from '@/shared/ui/mobile-card'
 
 function StatusDot({ status }: { status: Application['status'] }) {
   const colors: Record<Application['status'], string> = {
@@ -130,6 +131,69 @@ function AccordionRow({
   )
 }
 
+// ─── Mobile (< md): раскрытие заявки → действия + отвесы под-карточками ────────
+function JournalMobileExpanded({
+  applicationId, onEdit, onComplete, onDeactivate,
+}: {
+  applicationId: number
+  onEdit: () => void
+  onComplete: () => void
+  onDeactivate: () => void
+}) {
+  const router = useRouter()
+  const { data: detail, isLoading } = useQuery({
+    queryKey: applicationKeys.detail(applicationId),
+    queryFn: () => getApplicationById(applicationId),
+    staleTime: 15_000,
+  })
+  const plumbs: PlumbLogSummary[] = detail?.plumbLogs ?? []
+  return (
+    <div className="mb-3 ml-4 space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={onEdit}>Редактировать</Button>
+        <Button
+          size="sm"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => router.push('/plumb/new?applicationId=' + applicationId)}
+        >
+          + Взвешивание
+        </Button>
+        <Button size="sm" variant="outline"
+          onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
+          Завершить
+        </Button>
+        <Button size="sm" variant="destructive"
+          onClick={() => { if (window.confirm('Деактивировать заявку?')) onDeactivate() }}>
+          Деактивировать
+        </Button>
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-16 w-full" />
+      ) : plumbs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Отвесов пока нет</p>
+      ) : (
+        plumbs.map((p) => (
+          <div
+            key={p.id}
+            className="rounded-lg border border-border bg-background-elevated p-3 active:bg-background-elevated-2"
+            onClick={() => router.push(`/plumb/view/${p.id}?backUrl=${encodeURIComponent('/journal')}&backLabel=${encodeURIComponent('Журнал заявок')}`)}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">#{p.id} · {p.transport?.plateNumber ?? '—'}</span>
+              <PlumbStatus gross={p.gross} />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div><span className="text-xs text-muted-foreground">Водитель</span><div>{p.driver?.fullName ?? '—'}</div></div>
+              <div><span className="text-xs text-muted-foreground">Куб.</span><div>{p.volume != null ? p.volume.toFixed(2) : '—'}</div></div>
+              <div><span className="text-xs text-muted-foreground">БСУ</span><div>{p.bsu?.name ?? '—'}</div></div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
 export function ApplicationsJournalPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -215,7 +279,7 @@ export function ApplicationsJournalPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
+      <div className="hidden rounded-lg border border-border bg-card md:block">
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="space-y-2 p-4">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
@@ -239,7 +303,7 @@ export function ApplicationsJournalPage() {
                   applications.flatMap((app, index) => [
                     <tr
                       key={app.id}
-                      className={`border-b border-border cursor-pointer transition-colors hover:bg-background-elevated ${index % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                      className={`border-b border-border cursor-pointer transition-colors hover:bg-background-elevated ${index % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
                       onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
                     >
                       <td className="px-4 py-3">
@@ -276,6 +340,44 @@ export function ApplicationsJournalPage() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* Cards — мобайл */}
+      <div className="md:hidden">
+        {isLoading ? (
+          <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
+        ) : applications.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+            Заявок на выбранную дату нет
+          </div>
+        ) : (
+          applications.map((app) => (
+            <div key={app.id}>
+              <MobileCard
+                onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
+                title={`${app.deliveryTime ?? '—'} · №${app.id}`}
+                subtitle={app.customer.name}
+                badge={<StatusDot status={app.status} />}
+                actions={expandedId === app.id
+                  ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                rows={[
+                  { label: 'Объект', value: app.object.name },
+                  { label: 'Материал', value: app.material.name },
+                  { label: 'Объём', value: `${app.progress.shippedVolume.toFixed(1)}/${app.targetVolume.toFixed(1)} м³` },
+                ]}
+              />
+              {expandedId === app.id && (
+                <JournalMobileExpanded
+                  applicationId={app.id}
+                  onEdit={() => router.push('/plan/edit/' + app.id)}
+                  onComplete={() => completeMutation.mutate(app.id)}
+                  onDeactivate={() => deactivateMutation.mutate(app.id)}
+                />
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

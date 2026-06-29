@@ -202,7 +202,7 @@ export function ReportFilterPanel({ tab }: Props) {
       </div>
 
       {/* Диапазон дат */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-sm text-foreground">
             Дата с <span className="text-destructive">*</span>
@@ -219,7 +219,7 @@ export function ReportFilterPanel({ tab }: Props) {
 
       {/* Динамические фильтры */}
       {activeKeys.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {activeKeys.includes('supplierId') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Поставщик</Label>
@@ -331,7 +331,7 @@ export function ReportFilterPanel({ tab }: Props) {
       )}
 
       {/* Кнопки */}
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex flex-wrap items-center gap-3 pt-1">
         <Button
           onClick={handleGenerate}
           disabled={isGenerating || !isValid}

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
+import { DictionaryMobileCards } from "./DictionaryMobileCards"
 import { TransportForm } from '@/features/dictionaries/ui/TransportForm'
 import { getTransports, createTransport, updateTransport, activateTransport, deactivateTransport } from '@/entities/transport/api/transportApi'
 import type { Transport, CreateTransportDto } from '@/entities/transport/model/types'
@@ -60,14 +61,14 @@ export function TransportsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Поиск по гос. номеру..." className="pl-9 bg-background-elevated border-border h-10" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}><SelectTrigger className="w-[160px] bg-background-elevated border-border"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Все статусы</SelectItem><SelectItem value="active">Активные</SelectItem><SelectItem value="inactive">Неактивные</SelectItem></SelectContent></Select>
         </div>
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => { setEditingItem(undefined); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Добавить</Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
         {loading ? <div className="p-4 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div> : (
           <table className="w-full">
             <thead><tr className="border-b border-border">
@@ -82,7 +83,7 @@ export function TransportsTab() {
             <tbody>
               {items.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">Ничего не найдено</td></tr>
                 : pageItems.map((item, i) => (
-                  <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`} onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
+                  <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`} onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
                     <td className="px-4 py-3 text-sm font-medium text-foreground font-mono">{item.plateNumber}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.driver?.fullName || '—'}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.carrier?.name || '—'}</td>
@@ -96,6 +97,20 @@ export function TransportsTab() {
           </table>
         )}
       </div>
+      <DictionaryMobileCards
+        loading={loading}
+        items={items}
+        pageItems={pageItems}
+        getTitle={(item) => item.plateNumber}
+        getRows={(item) => [
+          { label: 'Водитель', value: item.driver?.fullName || '—' },
+          { label: 'Перевозчик', value: item.carrier?.name || '—' },
+        ]}
+        onEdit={(item) => { setEditingItem(item); setSheetOpen(true) }}
+        onActivate={handleActivate}
+        onDeactivate={handleDeactivate}
+      />
+
       <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
 
       <DictionarySheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={editingItem ? 'Редактировать транспорт' : 'Добавить транспорт'} onSave={() => formRef.current?.requestSubmit()} isSaving={saving}>

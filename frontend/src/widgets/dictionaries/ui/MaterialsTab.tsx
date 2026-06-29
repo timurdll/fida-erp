@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DictionarySheet } from '@/features/dictionaries/ui/DictionarySheet'
+import { DictionaryMobileCards } from "./DictionaryMobileCards"
 import { MaterialForm } from '@/features/dictionaries/ui/MaterialForm'
 import { getMaterials, createMaterial, updateMaterial, activateMaterial, deactivateMaterial } from '@/entities/material/api/materialApi'
 import type { Material, CreateMaterialDto } from '@/entities/material/model/types'
@@ -65,7 +66,7 @@ export function MaterialsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -78,7 +79,7 @@ export function MaterialsTab() {
         </div>
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => { setEditingItem(undefined); setSheetOpen(true) }}><Plus className="mr-2 h-4 w-4" />Добавить</Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
         {loading ? <div className="p-4 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div> : (
           <table className="w-full">
             <thead><tr className="border-b border-border">
@@ -91,7 +92,7 @@ export function MaterialsTab() {
             <tbody>
               {items.length === 0 ? <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">Ничего не найдено</td></tr>
                 : pageItems.map((item, i) => (
-                  <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                  <tr key={item.id} className={`border-b border-border transition-colors hover:bg-background-elevated cursor-pointer ${i % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
                     onClick={() => { setEditingItem(item); setSheetOpen(true) }}>
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{MaterialTypeLabel[item.type]}</td>
@@ -112,6 +113,20 @@ export function MaterialsTab() {
           </table>
         )}
       </div>
+      <DictionaryMobileCards
+        loading={loading}
+        items={items}
+        pageItems={pageItems}
+        getTitle={(item) => item.name}
+        getRows={(item) => [
+          { label: 'Тип', value: MaterialTypeLabel[item.type] },
+          { label: 'Плотность', value: item.density ?? '—' },
+        ]}
+        onEdit={(item) => { setEditingItem(item); setSheetOpen(true) }}
+        onActivate={handleActivate}
+        onDeactivate={handleDeactivate}
+      />
+
       <TablePagination page={page} pageCount={pageCount} total={total} from={from} to={to} onPageChange={setPage} />
 
       <DictionarySheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={editingItem ? 'Редактировать материал' : 'Добавить материал'} onSave={() => formRef.current?.requestSubmit()} isSaving={saving}>

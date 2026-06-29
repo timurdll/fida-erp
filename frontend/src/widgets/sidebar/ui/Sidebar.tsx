@@ -18,6 +18,7 @@ import { useAuthStore } from '@/shared/store/auth.store'
 import { useTheme } from '@/shared/lib/useTheme'
 import { Button } from '@/shared/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/ui/tooltip'
+import { ScaleIndicator } from '@/shared/ui/scale-indicator'
 
 const navigation: { name: string; href: string; icon: React.ElementType }[] = [
   { name: 'Журнал заявок', href: '/journal', icon: FileText },
@@ -36,7 +37,7 @@ export function Sidebar() {
   const themeLabel = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-[220px] border-r border-border bg-sidebar">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[220px] border-r border-border bg-sidebar lg:block">
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center border-b border-border px-6">
@@ -71,8 +72,9 @@ export function Sidebar() {
           </ul>
         </nav>
 
-        {/* User + Logout */}
+        {/* Scale indicator + User + Logout */}
         <div className="border-t border-border p-3">
+          <ScaleIndicator className="mb-2 px-3" />
           {user && (
             <div className="mb-1 px-3 py-1.5">
               <p className="text-xs font-medium text-foreground truncate">{user.fullName}</p>

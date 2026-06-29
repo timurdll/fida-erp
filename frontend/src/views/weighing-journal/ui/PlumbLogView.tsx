@@ -857,7 +857,7 @@ function PlumbLogDetail({
           {backLabel}
         </button>
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
               Отвес ID: {id}
@@ -875,7 +875,7 @@ function PlumbLogDetail({
           </div>
 
           {isEditing ? (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
                 onClick={handleSubmit((data) => saveMutation.mutate(data))}
@@ -889,7 +889,7 @@ function PlumbLogDetail({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
                 onClick={() => setIsEditing(true)}
@@ -931,7 +931,7 @@ function PlumbLogDetail({
 
       <form onSubmit={handleSubmit((data) => saveMutation.mutate(data))}>
         <div className="rounded-lg border border-border bg-card p-6">
-          <div className="grid grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             {/* Колонка 1: Общие данные */}
             <div className="space-y-4">
               <SectionTitle>Общие данные</SectionTitle>
@@ -1147,11 +1147,11 @@ function PlumbLogDetail({
               <div>
                 <SectionTitle>Данные по мониторингу</SectionTitle>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ReadonlyVal label="Первое взвешивание" value={fmt(plumbLog.firstWeighingAt)} />
                     <ReadonlyVal label="Оператор" value={plumbLog.firstOperator?.fullName ?? '—'} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ReadonlyVal label="Второе взвешивание" value={fmt(plumbLog.secondWeighingAt)} />
                     <ReadonlyVal label="Оператор" value={plumbLog.secondOperator?.fullName ?? '—'} />
                   </div>

@@ -37,12 +37,12 @@ export function DictionariesPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-background-secondary h-10 p-1 flex-wrap gap-1">
+        <TabsList className="bg-background-secondary h-10 p-1 gap-1 w-full justify-start overflow-x-auto flex-nowrap md:w-auto md:flex-wrap md:h-auto">
           {TABS.map((tab) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
-              className="data-[state=active]:bg-background-elevated data-[state=active]:text-foreground text-muted-foreground px-4"
+              className="shrink-0 data-[state=active]:bg-background-elevated data-[state=active]:text-foreground text-muted-foreground px-4"
             >
               {tab.label}
             </TabsTrigger>

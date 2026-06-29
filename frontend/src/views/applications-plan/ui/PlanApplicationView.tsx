@@ -252,7 +252,7 @@ export function PlanApplicationView({ id, backDate }: Props) {
                 {plumbs.map((p, i) => (
                   <tr
                     key={p.id}
-                    className={`border-b border-border cursor-pointer hover:bg-primary/5 transition-colors ${i % 2 === 1 ? 'bg-white/[0.02]' : ''}`}
+                    className={`border-b border-border cursor-pointer hover:bg-primary/5 transition-colors ${i % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
                     onClick={() => router.push(`/plumb/view/${p.id}?backUrl=${encodeURIComponent(selfUrl)}&backLabel=${encodeURIComponent('Заявка №' + id)}`)}
                   >
                     <td className="px-4 py-3 text-muted-foreground">{p.id}</td>

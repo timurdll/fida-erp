@@ -34,6 +34,7 @@ import type { Company, CreateCompanyDto, CompanyFunction, CompanyType } from '@/
 import { CompanyFunctionLabel, CompanyTypeLabel } from '@/entities/company/model/types'
 import type { Material, CreateMaterialDto } from '@/entities/material/model/types'
 import { isValidSlumpCone } from '@/shared/utils/slumpCone'
+import { useScaleStore } from '@/shared/store/scaleStore'
 
 interface Props {
   applicationId?: number
@@ -100,7 +101,7 @@ function CreateCompanyForm({
         <Input className="bg-background-elevated border-border h-9" placeholder="Название компании" {...register('name', { required: true })} />
         {errors.name && <p className="text-xs text-destructive">Обязательное поле</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-sm text-foreground">Функция</Label>
           <Controller name="function" control={control}
@@ -126,7 +127,7 @@ function CreateCompanyForm({
             )} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-sm text-foreground">БИН</Label>
           <Input className="bg-background-elevated border-border h-9" {...register('bin')} />
@@ -440,6 +441,9 @@ export function PlumbLogFormView({ applicationId }: Props) {
   const [grossConfirmed, setGrossConfirmed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Текущий вес с физического индикатора (WebSocket). null/false — индикатор недоступен.
+  const { weight, isConnected } = useScaleStore()
+
   const [showCreateSupplier, setShowCreateSupplier] = useState(false)
   const [showCreateCustomer, setShowCreateCustomer] = useState(false)
   const [showCreateMaterial, setShowCreateMaterial] = useState(false)
@@ -484,9 +488,6 @@ export function PlumbLogFormView({ applicationId }: Props) {
       getConstructions({ isActive: true, search }).then((l) => l.map((c) => ({ id: c.id, label: c.name }))),
     [],
   )
-
-  useEffect(() => { setTareConfirmed(false) }, [tare])
-  useEffect(() => { setGrossConfirmed(false) }, [gross])
 
   // Нетто = брутто − тара; брутто ≤ тары физически невозможно.
   const grossInvalid = !!tare && !!gross && Number(gross) <= Number(tare)
@@ -563,7 +564,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
           {/* Секция: Общие данные */}
           <div>
             <SectionTitle>Общие данные</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               {isConcrete ? (
                 <>
                   <ReadonlyField label="Поставщик" value={application?.supplier?.name ?? ''} />
@@ -640,7 +641,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
           {/* Секция: Транспорт */}
           <div>
             <SectionTitle>Транспорт</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               <Field label="Гос. номер" required>
                 <Controller
                   name="transportId"
@@ -702,7 +703,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
           {/* Секция: Данные сырья / бетона */}
           <div>
             <SectionTitle>{isConcrete ? 'Данные бетона' : 'Данные сырья'}</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               {isConcrete ? (
                 <>
                   <Field label="БСУ" required>
@@ -901,7 +902,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
           {/* Секция: Данные по весу */}
           <div>
             <SectionTitle>Данные по весу</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               {/* Тара */}
               <div className="space-y-1.5">
                 <Label className="text-sm text-muted-foreground">Тара (кг)</Label>
@@ -913,6 +914,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     value={tare}
                     onChange={(e) => {
                       setTare(e.target.value)
+                      setTareConfirmed(false)
                       if (!e.target.value && isConcrete) setGross('')
                     }}
                     disabled={!isConcrete ? !gross : false}
@@ -921,8 +923,12 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     type="button"
                     variant="secondary"
                     className="h-9 shrink-0"
-                    disabled={!isConcrete ? (!tare || !gross || grossInvalid || tareConfirmed) : (!tare || tareConfirmed)}
-                    onClick={() => setTareConfirmed(true)}
+                    disabled={!isConnected || weight === null}
+                    onClick={() => {
+                      if (weight === null) return
+                      setTare(String(weight))
+                      setTareConfirmed(true)
+                    }}
                   >
                     {tareConfirmed ? '✓ Тара' : 'Взвесить тару'}
                   </Button>
@@ -940,6 +946,7 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     value={gross}
                     onChange={(e) => {
                       setGross(e.target.value)
+                      setGrossConfirmed(false)
                       if (!e.target.value && !isConcrete) setTare('')
                     }}
                     disabled={isConcrete ? !tare : false}
@@ -948,8 +955,12 @@ export function PlumbLogFormView({ applicationId }: Props) {
                     type="button"
                     variant="secondary"
                     className="h-9 shrink-0"
-                    disabled={isConcrete ? (!gross || !tare || grossInvalid || grossConfirmed) : (!gross || grossConfirmed)}
-                    onClick={() => setGrossConfirmed(true)}
+                    disabled={!isConnected || weight === null}
+                    onClick={() => {
+                      if (weight === null) return
+                      setGross(String(weight))
+                      setGrossConfirmed(true)
+                    }}
                   >
                     {grossConfirmed ? '✓ Брутто' : 'Взвесить брутто'}
                   </Button>
