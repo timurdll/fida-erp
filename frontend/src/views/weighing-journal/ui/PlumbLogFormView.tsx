@@ -981,6 +981,14 @@ export function PlumbLogFormView({ applicationId }: Props) {
                 </span>
               </div>
             )}
+
+            {isConnected ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Текущий вес: <span className="font-medium text-foreground">{weight} кг</span>
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Нет соединения с весами</p>
+            )}
           </div>
         </div>
 
