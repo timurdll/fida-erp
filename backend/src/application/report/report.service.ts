@@ -89,6 +89,20 @@ function cols(...defs: [string, string?][]): ReportColumn[] {
   return defs.map(([header, numFmt]) => ({ header, numFmt }));
 }
 
+function addNetTotalRow(
+  data: ReportRow[],
+  totalColumns: number,
+  labelIndex: number,
+  netIndex: number,
+  rows: ReportPlumbRow[],
+): void {
+  const total = rows.reduce((sum, row) => sum + (row.net ?? 0), 0);
+  const cells: ReportRow['cells'] = Array.from({ length: totalColumns }, () => null);
+  cells[labelIndex] = 'Итого';
+  cells[netIndex] = total;
+  data.push({ cells, bold: true });
+}
+
 @Injectable()
 export class ReportService {
   constructor(
@@ -156,6 +170,7 @@ export class ReportService {
         r.operatorName, r.note, r.nomenclatureName,
       ],
     }));
+    addNetTotalRow(data, columns.length, 6, 7, rows);
     return { title: this.title(ReportType.OTVESY_DETAIL, f), columns, rows: data };
   }
 
@@ -198,6 +213,7 @@ export class ReportService {
         r.net, r.gross, r.tare, r.operatorName, r.note,
       ],
     }));
+    addNetTotalRow(data, columns.length, 5, 6, rows);
     return { title: this.title(ReportType.OTVESY_DELETED, f), columns, rows: data };
   }
 
@@ -337,6 +353,7 @@ export class ReportService {
         r.net, r.gross, r.tare, r.volume, density(r.net, r.volume), r.operatorName,
       ],
     }));
+    addNetTotalRow(data, columns.length, 7, 8, rows);
     return { title: this.title(ReportType.ZAYAVKI_DETAIL, f), columns, rows: data };
   }
 
@@ -356,6 +373,7 @@ export class ReportService {
         r.net, r.gross, r.tare, r.volume, density(r.net, r.volume), r.operatorName, r.note,
       ],
     }));
+    addNetTotalRow(data, columns.length, 6, 7, rows);
     return { title: this.title(ReportType.ZAYAVKI_DELETED, f), columns, rows: data };
   }
 
