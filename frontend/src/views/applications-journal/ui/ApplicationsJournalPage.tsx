@@ -23,6 +23,7 @@ import {
   deactivateApplication,
 } from '@/entities/application/api/applicationApi'
 import type { Application, PlumbLogSummary } from '@/entities/application/model/types'
+import { sortApplicationsWithWorkedLast } from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { toLocalDateString } from '@/shared/utils/date'
@@ -217,6 +218,7 @@ export function ApplicationsJournalPage() {
   const totalShipped = applications.reduce((s, a) => s + a.progress.shippedVolume, 0)
   const totalLoading = applications.reduce((s, a) => s + a.progress.loadingVolume, 0)
   const totalPlan = applications.reduce((s, a) => s + a.targetVolume, 0)
+  const listApplications = sortApplicationsWithWorkedLast(applications)
 
   const completeMutation = useMutation({
     mutationFn: completeApplication,
@@ -297,10 +299,10 @@ export function ApplicationsJournalPage() {
                 </tr>
               </thead>
               <tbody>
-                {applications.length === 0 ? (
+                {listApplications.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">Заявок на выбранную дату нет</td></tr>
                 ) : (
-                  applications.flatMap((app, index) => [
+                  listApplications.flatMap((app, index) => [
                     <tr
                       key={app.id}
                       className={`border-b border-border cursor-pointer transition-colors hover:bg-background-elevated ${index % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
@@ -346,12 +348,12 @@ export function ApplicationsJournalPage() {
       <div className="md:hidden">
         {isLoading ? (
           <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
-        ) : applications.length === 0 ? (
+        ) : listApplications.length === 0 ? (
           <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
             Заявок на выбранную дату нет
           </div>
         ) : (
-          applications.map((app) => (
+          listApplications.map((app) => (
             <div key={app.id}>
               <MobileCard
                 onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}

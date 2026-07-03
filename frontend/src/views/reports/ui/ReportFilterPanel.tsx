@@ -110,7 +110,7 @@ export function ReportFilterPanel({ tab }: Props) {
 
   const loadMaterials = useCallback(
     (search: string) =>
-      getMaterials({ isActive: true, search: search || undefined }).then((data) =>
+      getMaterials({ isActive: true, filterType: 'OTHER', search: search || undefined }).then((data) =>
         data.map((m) => ({ id: m.id, label: m.name })),
       ),
     [],

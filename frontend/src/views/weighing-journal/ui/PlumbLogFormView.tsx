@@ -501,11 +501,20 @@ export function PlumbLogFormView({ applicationId }: Props) {
     try {
       const created = await createPlumbLog(formData)
 
-      if (tare) {
-        await weighTare(created.id, Number(tare))
-      }
-      if (gross) {
-        await weighGross(created.id, Number(gross))
+      if (isConcrete) {
+        if (tare) {
+          await weighTare(created.id, Number(tare))
+        }
+        if (gross) {
+          await weighGross(created.id, Number(gross))
+        }
+      } else {
+        if (gross) {
+          await weighGross(created.id, Number(gross))
+        }
+        if (tare) {
+          await weighTare(created.id, Number(tare))
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() })

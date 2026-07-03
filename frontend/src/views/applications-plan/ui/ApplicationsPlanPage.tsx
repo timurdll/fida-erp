@@ -34,7 +34,7 @@ import { cn } from '@/shared/lib/utils'
 import { applicationKeys } from '@/entities/application/model/queryKeys'
 import { getApplications, deactivateApplication, completeApplication } from '@/entities/application/api/applicationApi'
 import type { Application } from '@/entities/application/model/types'
-import { APP_STATUS_LABEL } from '@/entities/application/model/types'
+import { APP_STATUS_LABEL, sortApplicationsWithWorkedLast } from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { printApplicationsPlan } from '../lib/printPlan'
 import { toLocalDateString as toLocalDateStr } from '@/shared/utils/date'
@@ -479,6 +479,7 @@ export function ApplicationsPlanPage() {
   const totalShipped = applications.reduce((s, a) => s + a.progress.shippedVolume, 0)
   const totalLoading = applications.reduce((s, a) => s + a.progress.loadingVolume, 0)
   const totalRemain = applications.reduce((s, a) => s + a.progress.remainVolume, 0)
+  const listApplications = sortApplicationsWithWorkedLast(applications)
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateApplication,
@@ -584,7 +585,7 @@ export function ApplicationsPlanPage() {
           <Button
             variant="outline"
             disabled={isLoading || applications.length === 0}
-            onClick={() => printApplicationsPlan(applications, date)}
+            onClick={() => printApplicationsPlan(listApplications, date)}
           >
             <Printer className="mr-2 h-4 w-4" />
             Распечатать
@@ -635,14 +636,14 @@ export function ApplicationsPlanPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {applications.length === 0 ? (
+                  {listApplications.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
                         Заявок на выбранную дату нет
                       </td>
                     </tr>
                   ) : (
-                    applications.map((app, index) => (
+                    listApplications.map((app, index) => (
                       <tr
                         key={app.id}
                         className={cn(
@@ -690,12 +691,12 @@ export function ApplicationsPlanPage() {
         <div className="md:hidden">
           {isLoading ? (
             <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
-          ) : applications.length === 0 ? (
+          ) : listApplications.length === 0 ? (
             <div className="rounded-lg border border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
               Заявок на выбранную дату нет
             </div>
           ) : (
-            applications.map((app) => (
+            listApplications.map((app) => (
               <MobileCard
                 key={app.id}
                 onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}

@@ -31,12 +31,44 @@ export class PlumbLogService {
   }
 
   async update(id: number, dto: UpdatePlumbLogDto) {
-    await this.findById(id);
-    return this.repo.update(id, dto);
+    const existing = await this.findById(id);
+    const patch: UpdatePlumbLogDto = { ...dto };
+    const applicationChanged =
+      dto.applicationId !== undefined && dto.applicationId !== existing.applicationId;
+
+    if (applicationChanged) {
+      const application = await this.applicationRepo.findById(dto.applicationId!);
+      if (!application) {
+        throw new NotFoundException(`Заявка #${dto.applicationId} не найдена`);
+      }
+
+      patch.supplierId = application.supplierId;
+      patch.customerId = application.customerId;
+      patch.materialId = application.materialId;
+      patch.objectId = application.objectId;
+      if (application.constructionId != null) {
+        patch.constructionId = application.constructionId;
+      }
+      if (application.slumpCone != null) {
+        patch.slumpCone = application.slumpCone;
+      }
+    }
+
+    const updated = await this.repo.update(id, patch);
+    if (applicationChanged) {
+      await this.syncApplicationStatus(existing.applicationId, { reopen: true });
+      await this.syncApplicationStatus(updated.applicationId, { reopen: true });
+    }
+    return updated;
   }
 
   async weighTare(id: number, weight: number, operatorId: number) {
-    await this.findById(id);
+    const existing = await this.findById(id);
+    if (existing.gross != null && existing.gross <= weight) {
+      throw new BadRequestException(
+        `Брутто (${existing.gross} кг) должно быть больше тары (${weight} кг). Проверьте введённые значения.`,
+      );
+    }
     const weighed = await this.repo.weighTare(id, weight, operatorId);
     // Начало взвешивания первого отвеса переводит заявку PENDING → IN_PROGRESS
     // (gross ещё null, поэтому до COMPLETED здесь дело не дойдёт).
@@ -57,24 +89,31 @@ export class PlumbLogService {
   }
 
   // Автопереход статуса заявки после завершённого взвешивания отвеса.
-  private async syncApplicationStatus(applicationId: number | null | undefined) {
+  private async syncApplicationStatus(
+    applicationId: number | null | undefined,
+    opts: { reopen?: boolean } = {},
+  ) {
     if (applicationId == null) return;
 
     const application = await this.applicationRepo.findById(applicationId);
     if (!application || !application.progress) return;
-    // COMPLETED/CANCELLED — финальные, не трогаем (после завершения мог добавиться возврат).
-    if (
-      application.status === ApplicationStatus.COMPLETED ||
-      application.status === ApplicationStatus.CANCELLED
-    ) {
+    // CANCELLED — финальный статус. COMPLETED открываем заново только при ручной перепривязке.
+    if (application.status === ApplicationStatus.CANCELLED) {
+      return;
+    }
+    if (application.status === ApplicationStatus.COMPLETED && !opts.reopen) {
       return;
     }
 
-    // progress.shippedVolume пересчитан findById после записи текущего gross.
     if (application.progress.shippedVolume >= application.targetVolume) {
       await this.applicationRepo.updateStatus(applicationId, ApplicationStatus.COMPLETED);
-    } else if (application.status === ApplicationStatus.PENDING) {
+    } else if (
+      application.progress.shippedVolume > 0 ||
+      application.progress.loadingVolume > 0
+    ) {
       await this.applicationRepo.updateStatus(applicationId, ApplicationStatus.IN_PROGRESS);
+    } else if (opts.reopen) {
+      await this.applicationRepo.updateStatus(applicationId, ApplicationStatus.PENDING);
     }
   }
 

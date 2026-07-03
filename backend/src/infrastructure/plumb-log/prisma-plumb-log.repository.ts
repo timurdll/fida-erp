@@ -103,10 +103,13 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
   }
 
   async weighTare(id: number, tare: number, operatorId: number): Promise<PlumbLogEntity> {
+    const existing = await this.prisma.plumbLog.findUnique({ where: { id } });
+    const net = existing?.gross != null ? existing.gross - tare : null;
     const r = await this.prisma.plumbLog.update({
       where: { id },
       data: {
         tare,
+        net,
         firstWeighingAt: new Date(),
         firstOperatorId: operatorId,
       },

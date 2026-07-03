@@ -60,9 +60,10 @@ export class PrismaReportRepository implements IReportRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private map(r: any): ReportPlumbRow {
+    const net = r.net ?? (r.gross != null && r.tare != null ? r.gross - r.tare : null);
     return {
       id: r.id,
-      net: r.net,
+      net,
       gross: r.gross,
       tare: r.tare,
       volume: r.volume,

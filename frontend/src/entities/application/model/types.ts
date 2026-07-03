@@ -59,6 +59,18 @@ export interface Application {
   plumbLogs?: PlumbLogSummary[]
 }
 
+export function isWorkedApplication(app: Pick<Application, 'status' | 'progress'>): boolean {
+  return app.status === 'COMPLETED' || app.progress.remainVolume <= 0
+}
+
+export function sortApplicationsWithWorkedLast<T extends Pick<Application, 'status' | 'progress'>>(
+  applications: T[],
+): T[] {
+  return [...applications].sort(
+    (a, b) => Number(isWorkedApplication(a)) - Number(isWorkedApplication(b)),
+  )
+}
+
 export interface CreateApplicationDto {
   supplierId: number
   customerId: number

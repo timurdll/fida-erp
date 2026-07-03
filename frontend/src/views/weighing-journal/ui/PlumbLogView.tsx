@@ -51,6 +51,7 @@ import {
   getApplications,
   getApplicationById,
 } from "@/entities/application/api/applicationApi";
+import { applicationKeys } from "@/entities/application/model/queryKeys";
 import type { Application } from "@/entities/application/model/types";
 import { getCompanies } from "@/entities/company/api/companyApi";
 import { getMaterials } from "@/entities/material/api/materialApi";
@@ -103,9 +104,14 @@ function printTTN(plumbLog: PlumbLog) {
   const toTons = (kg: number | null, digits = 2) =>
     kg != null ? (kg / 1000).toFixed(digits) : "";
 
-  const docDate = formatDateTime(
-    plumbLog.secondWeighingAt ?? plumbLog.firstWeighingAt,
-  );
+  const isMaterialPlumb = plumbLog.applicationId == null;
+  const arrivalAt = isMaterialPlumb
+    ? plumbLog.secondWeighingAt
+    : plumbLog.firstWeighingAt;
+  const departureAt = isMaterialPlumb
+    ? plumbLog.firstWeighingAt
+    : plumbLog.secondWeighingAt;
+  const docDate = formatDateTime(departureAt ?? arrivalAt);
   const grossTons = toTons(plumbLog.gross);
   const tareTons = toTons(plumbLog.tare);
   // «Количество» в ТТН — нетто за вычетом сорности (impurity, %). При impurity 0/null → чистое нетто.
@@ -122,7 +128,10 @@ function printTTN(plumbLog: PlumbLog) {
   const objectName = plumbLog.object?.name;
   const recipient =
     (plumbLog.customer?.name ?? "") + (objectName ? ` (${objectName})` : "");
-  const operator = plumbLog.firstOperator?.fullName ?? "";
+  const operator =
+    (isMaterialPlumb
+      ? plumbLog.secondOperator?.fullName ?? plumbLog.firstOperator?.fullName
+      : plumbLog.firstOperator?.fullName) ?? "";
   const driverName = plumbLog.driver?.fullName ?? "";
   const plate = plumbLog.transport?.plateNumber ?? "";
   const carrier = plumbLog.carrier?.name ?? "";
@@ -132,8 +141,8 @@ function printTTN(plumbLog: PlumbLog) {
   const seal = plumbLog.sealNumber ?? "";
   const deliveryType = plumbLog.deliveryType ?? "";
   const volumeStr = plumbLog.volume?.toFixed(2) ?? "";
-  const firstTime = formatTime(plumbLog.firstWeighingAt);
-  const secondTime = formatTime(plumbLog.secondWeighingAt);
+  const firstTime = formatTime(arrivalAt);
+  const secondTime = formatTime(departureAt);
 
   const html = `<!DOCTYPE html>
 <html lang="ru">
@@ -607,11 +616,22 @@ function ChangeApplicationDialog({
   const bindMutation = useMutation({
     mutationFn: (applicationId: number) =>
       updatePlumbLog(plumbLog.id, { applicationId }),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({
         queryKey: plumbLogKeys.detail(plumbLog.id),
       });
       queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.lists() });
+      if (plumbLog.applicationId != null) {
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.detail(plumbLog.applicationId),
+        });
+      }
+      if (updated.applicationId != null) {
+        queryClient.invalidateQueries({
+          queryKey: applicationKeys.detail(updated.applicationId),
+        });
+      }
       toast.success("Привязка обновлена");
       onClose();
     },

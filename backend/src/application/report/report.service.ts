@@ -55,9 +55,13 @@ function fmtApplicationDate(r: ReportApplicationRow): string {
   return [date, r.deliveryTime].filter(Boolean).join('\n');
 }
 
-/** Две строки в одной ячейке: firstWeighingAt и secondWeighingAt (пустые отбрасываем). */
-function entryExit(r: ReportPlumbRow): string {
-  return [r.firstWeighingAt, r.secondWeighingAt]
+/** Две строки в одной ячейке: заезд/выезд. У сырья сначала брутто, потом тара. */
+function entryExit(r: ReportPlumbRow, kind: 'concrete' | 'material' = 'concrete'): string {
+  const values =
+    kind === 'material'
+      ? [r.secondWeighingAt, r.firstWeighingAt]
+      : [r.firstWeighingAt, r.secondWeighingAt];
+  return values
     .map(fmtCell)
     .filter(Boolean)
     .join('\n');
@@ -146,7 +150,7 @@ export class ReportService {
     );
     const data: ReportRow[] = rows.map((r, i) => ({
       cells: [
-        i + 1, r.id, entryExit(r),
+        i + 1, r.id, entryExit(r, 'material'),
         r.supplierName, r.carrierName, r.plateNumber, r.materialName,
         r.net, r.gross, r.tare,
         r.operatorName, r.note, r.nomenclatureName,
@@ -189,7 +193,7 @@ export class ReportService {
     );
     const data: ReportRow[] = rows.map((r, i) => ({
       cells: [
-        i + 1, entryExit(r),
+        i + 1, entryExit(r, 'material'),
         r.supplierName, r.carrierName, r.plateNumber, r.materialName,
         r.net, r.gross, r.tare, r.operatorName, r.note,
       ],
