@@ -28,6 +28,10 @@ function fmtDate(iso: string | null) {
   return fmt.format(new Date(iso))
 }
 
+function materialArrivalAt(log: PlumbLog): string | null {
+  return log.secondWeighingAt ?? log.firstWeighingAt
+}
+
 function kg(val: number | null) {
   if (val === null) return '—'
   return val.toLocaleString('ru-RU') + ' кг'
@@ -220,7 +224,7 @@ export function WeighingJournalPage() {
                     } ${log.gross === null ? 'opacity-60' : ''}`}
                   >
                     <td className="px-4 py-3 text-sm font-medium text-primary">#{log.id}</td>
-                    <td className="px-4 py-3 text-sm text-foreground">{fmtDate(log.firstWeighingAt)}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{fmtDate(materialArrivalAt(log))}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{log.supplier?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{log.customer?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{log.material?.name ?? '—'}</td>
@@ -269,7 +273,7 @@ export function WeighingJournalPage() {
                   onClick={() => router.push('/plumb/view/' + log.id)}
                   muted={log.gross === null}
                   title={`#${log.id} · ${kg(log.net)}`}
-                  subtitle={fmtDate(log.firstWeighingAt)}
+                  subtitle={fmtDate(materialArrivalAt(log))}
                   badge={log.transport?.plateNumber
                     ? <span className="font-mono text-xs text-muted-foreground">{log.transport.plateNumber}</span>
                     : undefined}

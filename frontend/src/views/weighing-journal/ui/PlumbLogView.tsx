@@ -86,6 +86,24 @@ function fmt(iso: string | null) {
   return iso ? fmtDt.format(new Date(iso)) : "—";
 }
 
+function getMonitoringDisplay(plumbLog: PlumbLog) {
+  const isMaterialPlumb = plumbLog.applicationId == null;
+  return {
+    firstAt: isMaterialPlumb
+      ? plumbLog.secondWeighingAt
+      : plumbLog.firstWeighingAt,
+    firstOperator: isMaterialPlumb
+      ? plumbLog.secondOperator
+      : plumbLog.firstOperator,
+    secondAt: isMaterialPlumb
+      ? plumbLog.firstWeighingAt
+      : plumbLog.secondWeighingAt,
+    secondOperator: isMaterialPlumb
+      ? plumbLog.firstOperator
+      : plumbLog.secondOperator,
+  };
+}
+
 function printTTN(plumbLog: PlumbLog) {
   const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -105,12 +123,9 @@ function printTTN(plumbLog: PlumbLog) {
     kg != null ? (kg / 1000).toFixed(digits) : "";
 
   const isMaterialPlumb = plumbLog.applicationId == null;
-  const arrivalAt = isMaterialPlumb
-    ? plumbLog.secondWeighingAt
-    : plumbLog.firstWeighingAt;
-  const departureAt = isMaterialPlumb
-    ? plumbLog.firstWeighingAt
-    : plumbLog.secondWeighingAt;
+  const monitoring = getMonitoringDisplay(plumbLog);
+  const arrivalAt = monitoring.firstAt;
+  const departureAt = monitoring.secondAt;
   const docDate = formatDateTime(departureAt ?? arrivalAt);
   const grossTons = toTons(plumbLog.gross);
   const tareTons = toTons(plumbLog.tare);
@@ -130,7 +145,7 @@ function printTTN(plumbLog: PlumbLog) {
     (plumbLog.customer?.name ?? "") + (objectName ? ` (${objectName})` : "");
   const operator =
     (isMaterialPlumb
-      ? plumbLog.secondOperator?.fullName ?? plumbLog.firstOperator?.fullName
+      ? monitoring.firstOperator?.fullName ?? monitoring.secondOperator?.fullName
       : plumbLog.firstOperator?.fullName) ?? "";
   const driverName = plumbLog.driver?.fullName ?? "";
   const plate = plumbLog.transport?.plateNumber ?? "";
@@ -425,6 +440,7 @@ function printAct(plumbLog: PlumbLog) {
       minute: "2-digit",
     }).format(new Date(dt));
   };
+  const monitoring = getMonitoringDisplay(plumbLog);
 
   const actHtml = (copy: number) => `
     <div class="act"${copy === 2 ? ' style="margin-top:32px;padding-top:24px;border-top:1px dashed #000;"' : ""}>
@@ -462,13 +478,13 @@ function printAct(plumbLog: PlumbLog) {
           </tr>
           <tr>
             <td>Оператор</td>
-            <td>${plumbLog.firstOperator?.fullName ?? "—"}</td>
-            <td>${plumbLog.secondOperator?.fullName ?? "—"}</td>
+            <td>${monitoring.firstOperator?.fullName ?? "—"}</td>
+            <td>${monitoring.secondOperator?.fullName ?? "—"}</td>
           </tr>
           <tr>
             <td>Дата и время</td>
-            <td>${formatDT(plumbLog.firstWeighingAt)}</td>
-            <td>${formatDT(plumbLog.secondWeighingAt)}</td>
+            <td>${formatDT(monitoring.firstAt)}</td>
+            <td>${formatDT(monitoring.secondAt)}</td>
           </tr>
         </tbody>
       </table>
@@ -579,7 +595,8 @@ function ChangeApplicationDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const plumbDate = plumbLog.firstWeighingAt?.slice(0, 10) ?? "";
+  const monitoring = getMonitoringDisplay(plumbLog);
+  const plumbDate = monitoring.firstAt?.slice(0, 10) ?? "";
   const [searchId, setSearchId] = useState("");
   const [searchResult, setSearchResult] = useState<
     Application | null | "not_found"
@@ -658,7 +675,7 @@ function ChangeApplicationDialog({
         <DialogHeader>
           <DialogTitle>Изменить привязку</DialogTitle>
           <DialogDescription>
-            Заявки за {fmtDmy(plumbLog.firstWeighingAt)} или введите ID для
+            Заявки за {fmtDmy(monitoring.firstAt)} или введите ID для
             поиска
           </DialogDescription>
         </DialogHeader>
@@ -969,6 +986,7 @@ function PlumbLogDetail({
     selectedTransport?.carrier?.name ??
     plumbLog.carrier?.name ??
     "—";
+  const monitoring = getMonitoringDisplay(plumbLog);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: plumbLogKeys.detail(id) });
@@ -1068,7 +1086,7 @@ function PlumbLogDetail({
               )}
             </h1>
             <p className="mt-1 text-muted-foreground text-sm">
-              {fmt(plumbLog.firstWeighingAt)}
+              {fmt(monitoring.firstAt)}
             </p>
           </div>
 
@@ -1633,21 +1651,21 @@ function PlumbLogDetail({
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ReadonlyVal
                       label="Первое взвешивание"
-                      value={fmt(plumbLog.firstWeighingAt)}
+                      value={fmt(monitoring.firstAt)}
                     />
                     <ReadonlyVal
                       label="Оператор"
-                      value={plumbLog.firstOperator?.fullName ?? "—"}
+                      value={monitoring.firstOperator?.fullName ?? "—"}
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <ReadonlyVal
                       label="Второе взвешивание"
-                      value={fmt(plumbLog.secondWeighingAt)}
+                      value={fmt(monitoring.secondAt)}
                     />
                     <ReadonlyVal
                       label="Оператор"
-                      value={plumbLog.secondOperator?.fullName ?? "—"}
+                      value={monitoring.secondOperator?.fullName ?? "—"}
                     />
                   </div>
                 </div>
