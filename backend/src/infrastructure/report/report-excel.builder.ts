@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import type { ReportResult } from '../../domain/report/report.types';
+import type {
+  FidaSummaryData,
+  ReportCellValue,
+  ReportResult,
+} from '../../domain/report/report.types';
 
 @Injectable()
 export class ReportExcelBuilder {
   async build(result: ReportResult): Promise<Buffer> {
+    if (result.layout === 'fida-summary' && result.fidaSummary) {
+      return this.buildFidaSummary(result.fidaSummary);
+    }
+
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Отчёт');
     const n = result.columns.length;
@@ -97,6 +105,128 @@ export class ReportExcelBuilder {
     widths.forEach((w, ci) => {
       ws.getColumn(ci + 1).width = w;
     });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    return buffer as unknown as Buffer;
+  }
+
+  private async buildFidaSummary(data: FidaSummaryData): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Fida');
+
+    const leftHeaders = [
+      '',
+      'ТОО',
+      'Объект',
+      'Марка',
+      'План',
+      'Факт',
+      '%\nисполнения',
+      'Причины\nнеисполнения',
+    ];
+    const rightHeaders = ['№', ...data.materialColumns.map((c) => c.header)];
+    const leftCount = leftHeaders.length;
+    const rightStart = leftCount + 1;
+    const totalColumns = leftCount + rightHeaders.length;
+    const rowsCount = Math.max(data.applications.length, data.materialRowCount);
+
+    ws.pageSetup = {
+      paperSize: 9,
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+    };
+
+    const thin: Partial<ExcelJS.Border> = {
+      style: 'thin',
+      color: { argb: 'FF000000' },
+    };
+    const medium: Partial<ExcelJS.Border> = {
+      style: 'medium',
+      color: { argb: 'FF000000' },
+    };
+    const allBorders: Partial<ExcelJS.Borders> = {
+      top: thin,
+      left: thin,
+      bottom: thin,
+      right: thin,
+    };
+
+    const setSectionBorder = (cell: ExcelJS.Cell, isRightSection = false) => {
+      cell.border = {
+        ...allBorders,
+        ...(isRightSection ? { left: medium } : {}),
+      };
+    };
+
+    ws.mergeCells(1, 1, 1, leftCount);
+    ws.mergeCells(1, rightStart, 1, totalColumns);
+
+    const leftTitle = ws.getCell(1, 1);
+    leftTitle.value = data.applicationsTitle;
+    leftTitle.font = { bold: true, size: 12 };
+    leftTitle.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    setSectionBorder(leftTitle);
+
+    const rightTitle = ws.getCell(1, rightStart);
+    rightTitle.value = data.materialsTitle;
+    rightTitle.font = { bold: true, size: 12 };
+    rightTitle.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    setSectionBorder(rightTitle, true);
+    ws.getRow(1).height = 18;
+
+    const headerRow = ws.getRow(2);
+    [...leftHeaders, ...rightHeaders].forEach((header, index) => {
+      const cell = headerRow.getCell(index + 1);
+      cell.value = header;
+      cell.font = { bold: true, size: 12 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      setSectionBorder(cell, index + 1 === rightStart);
+    });
+    headerRow.height = 58;
+
+    for (let i = 0; i < rowsCount; i++) {
+      const app = data.applications[i];
+      const materialNumber = i < data.materialRowCount ? i + 1 : null;
+      const values: ReportCellValue[] = [
+        app?.dateTime ?? null,
+        app?.customerName ?? null,
+        app?.objectName ?? null,
+        app?.materialName ?? null,
+        app?.planVolume ?? null,
+        app?.factVolume ?? null,
+        app?.completionPercent !== null && app?.completionPercent !== undefined
+          ? `${app.completionPercent}%`
+          : null,
+        app?.reason ?? null,
+        materialNumber,
+        ...data.materialColumns.map((col) => col.values[i] ?? null),
+      ];
+
+      const row = ws.getRow(i + 3);
+      values.forEach((value, index) => {
+        const cell = row.getCell(index + 1);
+        if (value !== null && value !== undefined) {
+          cell.value = value;
+          if (typeof value === 'number' && !Number.isInteger(value)) {
+            cell.numFmt = '0.##';
+          }
+        }
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: typeof value === 'string' && value.includes('\n'),
+        };
+        setSectionBorder(cell, index + 1 === rightStart);
+      });
+      row.height = 42;
+    }
+
+    const widths = [11, 24, 32, 11, 8, 8, 14, 20, 6];
+    for (let i = 0; i < totalColumns; i++) {
+      ws.getColumn(i + 1).width = widths[i] ?? 15;
+    }
 
     const buffer = await wb.xlsx.writeBuffer();
     return buffer as unknown as Buffer;

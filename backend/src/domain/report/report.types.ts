@@ -6,6 +6,7 @@ export enum ReportType {
   OTVESY_DELETED = 'otvesy-deleted', // 3. Удалённые отвесы (независимые)
   OTVESY_MATERIALS = 'otvesy-materials', // 4. Отчёт по материалам
   ZAYAVKI_SUMMARY = 'zayavki-summary', // 5. Сводный отчёт по заявкам
+  ZAYAVKI_FIDA_SUMMARY = 'zayavki-fida-summary', // 5a. Сводный отчёт Fida
   ZAYAVKI_DETAIL = 'zayavki-detail', // 6. Детальный отчёт по заявкам
   ZAYAVKI_DELETED = 'zayavki-deleted', // 7. Удалённые отвесы (зависимые)
   VOZVRAT = 'vozvrat', // 8. Отчёт по возврату
@@ -26,9 +27,36 @@ export interface ReportRow {
   bold?: boolean; // для строки «Итого»
 }
 
+export interface FidaSummaryApplicationRow {
+  dateTime: string;
+  customerName: string | null;
+  objectName: string | null;
+  materialName: string | null;
+  planVolume: number | null;
+  factVolume: number | null;
+  completionPercent: number | null;
+  reason: string | null;
+}
+
+export interface FidaSummaryMaterialColumn {
+  key: string;
+  header: string;
+  values: (number | null)[];
+}
+
+export interface FidaSummaryData {
+  applicationsTitle: string;
+  materialsTitle: string;
+  applications: FidaSummaryApplicationRow[];
+  materialColumns: FidaSummaryMaterialColumn[];
+  materialRowCount: number;
+}
+
 export interface ReportResult {
   /** Строка 1 листа: «<Название отчёта> с <dateFrom> по <dateTo>» */
   title: string;
   columns: ReportColumn[];
   rows: ReportRow[];
+  layout?: 'fida-summary';
+  fidaSummary?: FidaSummaryData;
 }

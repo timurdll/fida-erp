@@ -1,4 +1,8 @@
-import type { ReportResult } from '../model/types'
+import type {
+  FidaSummaryData,
+  ReportCellValue,
+  ReportResult,
+} from '../model/types'
 
 function escapeHtml(value: string): string {
   return value
@@ -12,6 +16,16 @@ function escapeHtml(value: string): string {
 /** Текст ячейки → HTML: экранирование + перенос строки \n → <br> (для «заезд/выезд»). */
 function cellHtml(value: string): string {
   return escapeHtml(value).replace(/\n/g, '<br>')
+}
+
+function numberText(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)))
+}
+
+function valueHtml(value: ReportCellValue): string {
+  if (value === null) return ''
+  if (typeof value === 'number') return numberText(value)
+  return cellHtml(String(value))
 }
 
 interface DownloadOpts {
@@ -44,6 +58,136 @@ const STYLES = `
   }
 `
 
+const FIDA_STYLES = `
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 10px; color: #000; background: #fff; }
+  .toolbar { margin-bottom: 6px; display: flex; gap: 6px; }
+  .toolbar button, .toolbar a.btn {
+    padding: 3px 10px; font-size: 14px; cursor: pointer; text-decoration: none;
+    color: #000; border: 1px solid #777; background: #f5f5f5; border-radius: 2px;
+    display: inline-block; line-height: 1.2;
+  }
+  .sheet { overflow-x: auto; }
+  table.fida { border-collapse: collapse; width: 100%; min-width: 1680px; table-layout: fixed; font-size: 17px; }
+  .fida th, .fida td {
+    border: 1px solid #000; padding: 4px 5px; text-align: center; vertical-align: middle;
+    font-weight: 600; line-height: 1.12; word-break: normal; overflow-wrap: anywhere;
+  }
+  .fida th { font-weight: 700; }
+  .fida .section-title { font-size: 17px; padding: 2px 6px; }
+  .fida .split { border-left: 4px double #000; }
+  .fida .date-col { width: 76px; }
+  .fida .company-col { width: 220px; }
+  .fida .object-col { width: 300px; }
+  .fida .brand-col { width: 76px; }
+  .fida .small-col { width: 54px; }
+  .fida .percent-col { width: 128px; }
+  .fida .reason-col { width: 166px; }
+  .fida .number-col { width: 64px; }
+  .fida .material-col { width: 112px; }
+  .empty { text-align: center; padding: 32px; color: #555; font-size: 14px; }
+  @media print {
+    @page { size: A4 landscape; margin: 6mm; }
+    body { margin: 0; }
+    .toolbar { display: none; }
+    .sheet { overflow: visible; }
+    table.fida { min-width: 0; font-size: 10px; }
+    .fida th, .fida td { padding: 2px 3px; }
+  }
+`
+
+function buildFidaSummaryTable(data: FidaSummaryData): string {
+  const leftHeaders = ['', 'ТОО', 'Объект', 'Марка', 'План', 'Факт', '%<br>исполнения', 'Причины<br>неисполнения']
+  const maxRows = Math.max(data.applications.length, data.materialRowCount)
+
+  if (maxRows === 0 && data.materialColumns.length === 0) {
+    return '<p class="empty">Нет данных за выбранный период</p>'
+  }
+
+  const colgroup = [
+    '<col class="date-col">',
+    '<col class="company-col">',
+    '<col class="object-col">',
+    '<col class="brand-col">',
+    '<col class="small-col">',
+    '<col class="small-col">',
+    '<col class="percent-col">',
+    '<col class="reason-col">',
+    '<col class="number-col">',
+    ...data.materialColumns.map(() => '<col class="material-col">'),
+  ].join('')
+
+  const leftHeaderCells = leftHeaders.map((h) => `<th>${h}</th>`).join('')
+  const materialHeaderCells = data.materialColumns
+    .map((c) => `<th class="material-col">${cellHtml(c.header)}</th>`)
+    .join('')
+
+  const bodyRows = Array.from({ length: maxRows }, (_, i) => {
+    const app = data.applications[i]
+    const leftValues: ReportCellValue[] = app
+      ? [
+          app.dateTime,
+          app.customerName,
+          app.objectName,
+          app.materialName,
+          app.planVolume,
+          app.factVolume,
+          app.completionPercent === null ? null : `${app.completionPercent}%`,
+          app.reason,
+        ]
+      : [null, null, null, null, null, null, null, null]
+    const rightValues: ReportCellValue[] = [
+      i < data.materialRowCount ? i + 1 : null,
+      ...data.materialColumns.map((c) => c.values[i] ?? null),
+    ]
+
+    const leftCells = leftValues.map((v) => `<td>${valueHtml(v)}</td>`).join('')
+    const rightCells = rightValues
+      .map((v, idx) => `<td${idx === 0 ? ' class="split"' : ''}>${valueHtml(v)}</td>`)
+      .join('')
+
+    return `<tr>${leftCells}${rightCells}</tr>`
+  }).join('')
+
+  return `<div class="sheet"><table class="fida">
+<colgroup>${colgroup}</colgroup>
+<thead>
+  <tr>
+    <th class="section-title" colspan="${leftHeaders.length}">${escapeHtml(data.applicationsTitle)}</th>
+    <th class="section-title split" colspan="${data.materialColumns.length + 1}">${escapeHtml(data.materialsTitle)}</th>
+  </tr>
+  <tr>${leftHeaderCells}<th class="split">№</th>${materialHeaderCells}</tr>
+</thead>
+<tbody>${bodyRows}</tbody>
+</table></div>`
+}
+
+function buildFidaSummaryPreviewDocument(
+  result: ReportResult,
+  opts: DownloadOpts,
+): string {
+  const data = result.fidaSummary
+  const content = data
+    ? buildFidaSummaryTable(data)
+    : '<p class="empty">Нет данных за выбранный период</p>'
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(result.title)}</title>
+<style>${FIDA_STYLES}</style>
+</head>
+<body>
+<div class="toolbar">
+  <a class="btn" href="${escapeHtml(opts.blobUrl)}" download="${escapeHtml(opts.filename)}">Скачать</a>
+  <button onclick="window.print()">Распечатать</button>
+</div>
+${content}
+</body>
+</html>`
+}
+
 /**
  * Самодостаточный HTML-документ превью отчёта для открытия в новой вкладке.
  * «Скачать» — ссылка на same-origin blob: URL с .xlsx (родитель уже скачал файл,
@@ -53,6 +197,10 @@ export function buildReportPreviewDocument(
   result: ReportResult,
   opts: DownloadOpts,
 ): string {
+  if (result.layout === 'fida-summary') {
+    return buildFidaSummaryPreviewDocument(result, opts)
+  }
+
   const headerCells = result.columns.map((c) => `<th>${escapeHtml(c.header)}</th>`).join('')
 
   const bodyRows =

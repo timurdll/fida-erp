@@ -41,6 +41,28 @@ export interface ReportPlumbRow {
   objectId: number | null;
 }
 
+export interface ReportApplicationPlumbRow {
+  volume: number | null;
+  gross: number | null;
+}
+
+export interface ReportApplicationRow {
+  id: number;
+  targetVolume: number;
+  deliveryDate: Date;
+  deliveryTime: string | null;
+  note: string | null;
+  supplierId: number;
+  customerId: number;
+  materialId: number;
+  objectId: number;
+  supplierName: string | null;
+  customerName: string | null;
+  materialName: string | null;
+  objectName: string | null;
+  plumbLogs: ReportApplicationPlumbRow[];
+}
+
 export interface IReportRepository {
   /** applicationId IS NULL, isActive=true, isReturn=false */
   findIndependentActive(filters: ReportFilters): Promise<ReportPlumbRow[]>;
@@ -52,4 +74,6 @@ export interface IReportRepository {
   findDependentDeleted(filters: ReportFilters): Promise<ReportPlumbRow[]>;
   /** isReturn=true */
   findReturns(filters: ReportFilters): Promise<ReportPlumbRow[]>;
+  /** Активные заявки за период доставки */
+  findApplications(filters: ReportFilters): Promise<ReportApplicationRow[]>;
 }

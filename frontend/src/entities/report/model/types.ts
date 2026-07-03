@@ -13,10 +13,37 @@ export interface ReportRow {
   bold?: boolean
 }
 
+export interface FidaSummaryApplicationRow {
+  dateTime: string
+  customerName: string | null
+  objectName: string | null
+  materialName: string | null
+  planVolume: number | null
+  factVolume: number | null
+  completionPercent: number | null
+  reason: string | null
+}
+
+export interface FidaSummaryMaterialColumn {
+  key: string
+  header: string
+  values: (number | null)[]
+}
+
+export interface FidaSummaryData {
+  applicationsTitle: string
+  materialsTitle: string
+  applications: FidaSummaryApplicationRow[]
+  materialColumns: FidaSummaryMaterialColumn[]
+  materialRowCount: number
+}
+
 export interface ReportResult {
   title: string
   columns: ReportColumn[]
   rows: ReportRow[]
+  layout?: 'fida-summary'
+  fidaSummary?: FidaSummaryData
 }
 
 export type ReportType =
@@ -25,6 +52,7 @@ export type ReportType =
   | 'otvesy-deleted'
   | 'otvesy-materials'
   | 'zayavki-summary'
+  | 'zayavki-fida-summary'
   | 'zayavki-detail'
   | 'zayavki-deleted'
   | 'vozvrat'
@@ -35,6 +63,7 @@ export const REPORT_LABELS: Record<ReportType, string> = {
   'otvesy-deleted': 'Отчёт по удалённым отвесам',
   'otvesy-materials': 'Отчет по материалам',
   'zayavki-summary': 'Сводный отчет',
+  'zayavki-fida-summary': 'Сводный отчет Fida',
   'zayavki-detail': 'Детальный отчет',
   'zayavki-deleted': 'Отчёт по удалённым отвесам',
   vozvrat: 'Отчет по возврату',
@@ -55,6 +84,7 @@ export const REPORT_FILTER_CONFIG: Record<ReportType, FilterKey[]> = {
   'otvesy-deleted': [],
   'otvesy-materials': ['materialId'],
   'zayavki-summary': ['supplierId', 'customerId', 'customerType', 'objectId'],
+  'zayavki-fida-summary': [],
   'zayavki-detail': ['supplierId', 'customerId', 'customerType', 'objectId', 'materialId', 'carrierId'],
   'zayavki-deleted': [],
   vozvrat: ['supplierId', 'customerId'],
@@ -69,6 +99,7 @@ export const OTVESY_TYPES: ReportType[] = [
 
 export const ZAYAVKI_TYPES: ReportType[] = [
   'zayavki-summary',
+  'zayavki-fida-summary',
   'zayavki-detail',
   'zayavki-deleted',
   'vozvrat',

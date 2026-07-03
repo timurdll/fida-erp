@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { REPORT_REPOSITORY } from '../../domain/report/i-report.repository';
 import type {
   IReportRepository,
+  ReportApplicationRow,
   ReportFilters,
   ReportPlumbRow,
 } from '../../domain/report/i-report.repository';
@@ -18,6 +19,7 @@ const NAMES: Record<ReportType, string> = {
   [ReportType.OTVESY_DELETED]: 'Отчёт по удалённым отвесам (независимые)',
   [ReportType.OTVESY_MATERIALS]: 'Отчёт по материалам',
   [ReportType.ZAYAVKI_SUMMARY]: 'Сводный отчёт по заявкам',
+  [ReportType.ZAYAVKI_FIDA_SUMMARY]: 'Сводный отчёт Fida',
   [ReportType.ZAYAVKI_DETAIL]: 'Детальный отчёт по заявкам',
   [ReportType.ZAYAVKI_DELETED]: 'Отчёт по удалённым отвесам (зависимые)',
   [ReportType.VOZVRAT]: 'Отчёт по возврату',
@@ -43,6 +45,16 @@ function fmtTitle(d: Date): string {
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
+/** Формат заголовков Fida: dd-MM-yyyy HH:mm (как в старом печатном отчёте). */
+function fmtFidaTitle(d: Date): string {
+  return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function fmtApplicationDate(r: ReportApplicationRow): string {
+  const date = `${pad2(r.deliveryDate.getDate())}-${pad2(r.deliveryDate.getMonth() + 1)}-${r.deliveryDate.getFullYear()}`;
+  return [date, r.deliveryTime].filter(Boolean).join('\n');
+}
+
 /** Две строки в одной ячейке: firstWeighingAt и secondWeighingAt (пустые отбрасываем). */
 function entryExit(r: ReportPlumbRow): string {
   return [r.firstWeighingAt, r.secondWeighingAt]
@@ -55,6 +67,18 @@ function entryExit(r: ReportPlumbRow): string {
 function density(net: number | null, volume: number | null): number | null {
   if (net == null || volume == null || volume === 0) return null;
   return Math.round(net / volume);
+}
+
+/** Фактическая отгрузка заявки — только завершённые отвесы, где уже есть брутто. */
+function applicationFact(r: ReportApplicationRow): number {
+  return r.plumbLogs
+    .filter((p) => p.gross !== null)
+    .reduce((sum, p) => sum + (p.volume ?? 0), 0);
+}
+
+function percent(fact: number, plan: number): number | null {
+  if (!plan) return null;
+  return Math.round((fact / plan) * 100);
 }
 
 function cols(...defs: [string, string?][]): ReportColumn[] {
@@ -80,6 +104,8 @@ export class ReportService {
         return this.otvesyMaterials(filters);
       case ReportType.ZAYAVKI_SUMMARY:
         return this.zayavkiSummary(filters);
+      case ReportType.ZAYAVKI_FIDA_SUMMARY:
+        return this.zayavkiFidaSummary(filters);
       case ReportType.ZAYAVKI_DETAIL:
         return this.zayavkiDetail(filters);
       case ReportType.ZAYAVKI_DELETED:
@@ -212,6 +238,81 @@ export class ReportService {
     const data: ReportRow[] = groups.map((g) => ({ cells: [g.customer, g.object, g.material, g.sum] }));
     data.push({ cells: ['', '', 'Итого', total], bold: true });
     return { title: this.title(ReportType.ZAYAVKI_SUMMARY, f), columns, rows: data };
+  }
+
+  private async zayavkiFidaSummary(f: ReportFilters): Promise<ReportResult> {
+    const [applications, materialRows] = await Promise.all([
+      this.repo.findApplications(this.pick(f, [])),
+      this.repo.findIndependentActive(this.pick(f, [])),
+    ]);
+
+    const appRows = applications.map((app) => {
+      const fact = applicationFact(app);
+      const completionPercent = percent(fact, app.targetVolume);
+      return {
+        dateTime: fmtApplicationDate(app),
+        customerName: app.customerName,
+        objectName: app.objectName,
+        materialName: app.materialName,
+        planVolume: app.targetVolume,
+        factVolume: fact,
+        completionPercent,
+        reason:
+          completionPercent !== null && completionPercent < 100
+            ? app.note
+            : null,
+      };
+    });
+
+    const materialMap = new Map<
+      string,
+      { material: string; supplier: string; values: number[] }
+    >();
+    for (const row of materialRows) {
+      if (row.net === null) continue;
+      const key = `${row.materialId}|${row.supplierId}`;
+      const entry = materialMap.get(key) ?? {
+        material: row.materialName ?? '',
+        supplier: row.supplierName ?? '',
+        values: [],
+      };
+      entry.values.push(row.net);
+      materialMap.set(key, entry);
+    }
+
+    const materialColumns = [...materialMap.entries()]
+      .map(([key, value]) => ({
+        key,
+        material: value.material,
+        supplier: value.supplier,
+        header: [value.material, value.supplier].filter(Boolean).join('\n'),
+        values: value.values,
+      }))
+      .sort(
+        (a, b) =>
+          a.material.localeCompare(b.material, 'ru') ||
+          a.supplier.localeCompare(b.supplier, 'ru'),
+      )
+      .map(({ key, header, values }) => ({ key, header, values }));
+
+    const materialRowCount = materialColumns.reduce(
+      (max, col) => Math.max(max, col.values.length),
+      0,
+    );
+
+    return {
+      title: this.title(ReportType.ZAYAVKI_FIDA_SUMMARY, f),
+      columns: [],
+      rows: [],
+      layout: 'fida-summary',
+      fidaSummary: {
+        applicationsTitle: `Заявки на бетон с ${fmtFidaTitle(f.dateFrom)} по ${fmtFidaTitle(f.dateTo)}`,
+        materialsTitle: `Поступление инертного материала с ${fmtFidaTitle(f.dateFrom)} по ${fmtFidaTitle(f.dateTo)}`,
+        applications: appRows,
+        materialColumns,
+        materialRowCount,
+      },
+    };
   }
 
   // 6. Детальный по заявкам
