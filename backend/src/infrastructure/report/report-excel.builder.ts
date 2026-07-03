@@ -223,6 +223,88 @@ export class ReportExcelBuilder {
       row.height = 42;
     }
 
+    // --- Добавление строки ИТОГО в таблицу ---
+    const summaryRowIndex = 3 + rowsCount;
+    const summaryRow = ws.getRow(summaryRowIndex);
+    
+    // Подсчет сумм по заявкам
+    let totalPlan = 0;
+    let totalFact = 0;
+    for (const app of data.applications) {
+      if (app?.planVolume) totalPlan += app.planVolume;
+      if (app?.factVolume) totalFact += app.factVolume;
+    }
+    const totalPercent = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0;
+
+    // Левая часть (Заявки)
+    summaryRow.getCell(2).value = 'ИТОГО';
+    summaryRow.getCell(2).font = { bold: true };
+    summaryRow.getCell(5).value = totalPlan;
+    summaryRow.getCell(5).font = { bold: true };
+    summaryRow.getCell(6).value = totalFact;
+    summaryRow.getCell(6).font = { bold: true };
+    summaryRow.getCell(7).value = `${totalPercent}%`;
+    summaryRow.getCell(7).font = { bold: true };
+
+    for (let i = 1; i <= leftCount; i++) {
+      const cell = summaryRow.getCell(i);
+      setSectionBorder(cell, false);
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+
+    // Правая часть (Материалы)
+    summaryRow.getCell(rightStart).value = 'Итого';
+    summaryRow.getCell(rightStart).font = { bold: true };
+    data.materialColumns.forEach((col, index) => {
+      const cell = summaryRow.getCell(rightStart + 1 + index);
+      const sum = col.values.reduce((a: number, b) => a + (b ?? 0), 0);
+      cell.value = sum;
+      cell.font = { bold: true };
+    });
+
+    for (let i = rightStart; i <= totalColumns; i++) {
+      const cell = summaryRow.getCell(i);
+      setSectionBorder(cell, i === rightStart);
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+    summaryRow.height = 25;
+
+    // --- Блок "Заявки Fida" под таблицей ---
+    const boxStartRow = summaryRowIndex + 2; // пропускаем одну пустую строку
+
+    // Шапка
+    ws.mergeCells(boxStartRow, 4, boxStartRow, 5);
+    const boxHeader = ws.getCell(boxStartRow, 4);
+    boxHeader.value = 'Заявки Fida';
+    boxHeader.font = { bold: true };
+    boxHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+    boxHeader.border = allBorders;
+    ws.getCell(boxStartRow, 5).border = allBorders;
+
+    // Итого план
+    const r1 = ws.getRow(boxStartRow + 1);
+    r1.getCell(4).value = 'Итого план';
+    r1.getCell(4).border = allBorders;
+    r1.getCell(5).value = totalPlan;
+    r1.getCell(5).border = allBorders;
+    r1.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Итого факт
+    const r2 = ws.getRow(boxStartRow + 2);
+    r2.getCell(4).value = 'Итого факт';
+    r2.getCell(4).border = allBorders;
+    r2.getCell(5).value = totalFact;
+    r2.getCell(5).border = allBorders;
+    r2.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // % исполнения
+    const r3 = ws.getRow(boxStartRow + 3);
+    r3.getCell(4).value = '% исполнения';
+    r3.getCell(4).border = allBorders;
+    r3.getCell(5).value = `${totalPercent}%`;
+    r3.getCell(5).border = allBorders;
+    r3.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+
     const widths = [11, 24, 32, 11, 8, 8, 14, 20, 6];
     for (let i = 0; i < totalColumns; i++) {
       ws.getColumn(i + 1).width = widths[i] ?? 15;

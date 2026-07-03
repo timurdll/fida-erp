@@ -149,6 +149,57 @@ function buildFidaSummaryTable(data: FidaSummaryData): string {
     return `<tr>${leftCells}${rightCells}</tr>`
   }).join('')
 
+  let totalPlan = 0
+  let totalFact = 0
+  for (const app of data.applications) {
+    if (app?.planVolume) totalPlan += app.planVolume
+    if (app?.factVolume) totalFact += app.factVolume
+  }
+  const totalPercent = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0
+
+  const materialSums = data.materialColumns.map(col => col.values.reduce((a, b) => a + (b || 0), 0))
+
+  const summaryLeftValues: ReportCellValue[] = [
+    null, 'ИТОГО', null, null, totalPlan, totalFact, `${totalPercent}%`, null
+  ]
+  const summaryRightValues: ReportCellValue[] = [
+    'Итого', ...materialSums
+  ]
+
+  const summaryLeftCells = summaryLeftValues
+    .map((v) => `<td style="font-weight:bold">${valueHtml(v)}</td>`)
+    .join('')
+  const summaryRightCells = summaryRightValues
+    .map((v, idx) => `<td style="font-weight:bold"${idx === 0 ? ' class="split"' : ''}>${valueHtml(v)}</td>`)
+    .join('')
+
+  const summaryRowHtml = `<tr>${summaryLeftCells}${summaryRightCells}</tr>`
+
+  const totalCols = leftHeaders.length + 1 + data.materialColumns.length
+  const emptyCell = `<td style="border: none !important; background: transparent;"></td>`
+  
+  const makeBoxRow = (label: string, value: string | number, isHeader = false) => {
+    const emptyBefore = `${emptyCell}${emptyCell}${emptyCell}`
+    if (isHeader) {
+      const cell = `<td colspan="2" style="font-weight:bold">${escapeHtml(label)}</td>`
+      const emptyAfter = Array.from({ length: totalCols - 5 }).map(() => emptyCell).join('')
+      return `<tr>${emptyBefore}${cell}${emptyAfter}</tr>`
+    } else {
+      const labelCell = `<td>${escapeHtml(label)}</td>`
+      const valueCell = `<td>${escapeHtml(String(value))}</td>`
+      const emptyAfter = Array.from({ length: totalCols - 5 }).map(() => emptyCell).join('')
+      return `<tr>${emptyBefore}${labelCell}${valueCell}${emptyAfter}</tr>`
+    }
+  }
+
+  const fidaBoxRows = `
+    <tr><td colspan="${totalCols}" style="border: none !important; height: 20px;"></td></tr>
+    ${makeBoxRow('Заявки Fida', '', true)}
+    ${makeBoxRow('Итого план', totalPlan)}
+    ${makeBoxRow('Итого факт', totalFact)}
+    ${makeBoxRow('% исполнения', `${totalPercent}%`)}
+  `
+
   return `<div class="sheet"><table class="fida">
 <colgroup>${colgroup}</colgroup>
 <thead>
@@ -158,7 +209,11 @@ function buildFidaSummaryTable(data: FidaSummaryData): string {
   </tr>
   <tr>${leftHeaderCells}<th class="split">№</th>${materialHeaderCells}</tr>
 </thead>
-<tbody>${bodyRows}</tbody>
+<tbody>
+  ${bodyRows}
+  ${summaryRowHtml}
+  ${fidaBoxRows}
+</tbody>
 </table></div>`
 }
 

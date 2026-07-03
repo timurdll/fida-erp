@@ -180,10 +180,19 @@ export class PrismaReportRepository implements IReportRepository {
   }
 
   async findApplications(f: ReportFilters): Promise<ReportApplicationRow[]> {
+    // 1. Извлекаем даты без времени для поиска в БД. 
+    // Поскольку deliveryDate хранится как UTC-полуночь (напр. 2026-07-03T00:00:00Z),
+    // нам нужно, чтобы в БД попали все заявки за дни, которые затрагивает фильтр.
+    const startOfDayUTC = new Date(f.dateFrom);
+    startOfDayUTC.setUTCHours(0, 0, 0, 0);
+
+    const endOfDayUTC = new Date(f.dateTo);
+    endOfDayUTC.setUTCHours(23, 59, 59, 999);
+
     const rows = await this.prisma.application.findMany({
       where: {
         isActive: true,
-        deliveryDate: this.dateWhere(f),
+        deliveryDate: { gte: startOfDayUTC, lte: endOfDayUTC },
         ...this.optionalWhere(f),
       },
       select: APPLICATION_SELECT,
@@ -193,6 +202,23 @@ export class PrismaReportRepository implements IReportRepository {
         { createdAt: 'asc' },
       ],
     });
-    return rows.map((r) => this.mapApplication(r));
+
+    const apps = rows.map((r) => this.mapApplication(r));
+
+    // 2. Фильтруем в памяти по точному времени.
+    return apps.filter((app) => {
+      // Если у заявки не указано время, считаем, что она на весь день, поэтому оставляем
+      if (!app.deliveryTime) return true;
+
+      const [hh, mm] = app.deliveryTime.split(':').map(Number);
+      
+      // Конструируем точное время заявки в UTC (отталкиваясь от UTC-полуночи deliveryDate).
+      // Заявки создаются в часовом поясе Казахстана (UTC+5).
+      // Значит, если время 09:00 (UTC+5), в UTC это будет 09 - 5 = 04:00.
+      const appDateTime = new Date(app.deliveryDate);
+      appDateTime.setUTCHours(hh - 5, mm, 0, 0);
+
+      return appDateTime >= f.dateFrom && appDateTime <= f.dateTo;
+    });
   }
 }
