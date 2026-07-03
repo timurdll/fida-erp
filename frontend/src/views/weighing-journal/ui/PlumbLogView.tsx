@@ -104,6 +104,77 @@ function getMonitoringDisplay(plumbLog: PlumbLog) {
   };
 }
 
+function getBindingStatus(app: Application) {
+  if (app.status === "COMPLETED" || app.progress.remainVolume <= 0) {
+    return { label: "Выполнена", rank: 0, color: "var(--success)" };
+  }
+  if (
+    app.status === "IN_PROGRESS" ||
+    app.progress.shippedVolume > 0 ||
+    app.progress.loadingVolume > 0
+  ) {
+    return { label: "В процессе", rank: 1, color: "var(--warning)" };
+  }
+  return { label: "Не начата", rank: 2, color: "var(--muted-foreground)" };
+}
+
+function sortBindingApplications(applications: Application[]): Application[] {
+  return [...applications].sort((a, b) => {
+    const byStatus = getBindingStatus(a).rank - getBindingStatus(b).rank;
+    if (byStatus !== 0) return byStatus;
+    return (a.deliveryTime ?? "").localeCompare(b.deliveryTime ?? "");
+  });
+}
+
+function DecimalInput({
+  value,
+  onChange,
+}: {
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+}) {
+  const [text, setText] = useState(value != null ? String(value) : "");
+
+  useEffect(() => {
+    setText(value != null ? String(value) : "");
+  }, [value]);
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      className="bg-background-elevated border-border h-9"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        if (!/^\d*(?:[.,]\d*)?$/.test(raw)) return;
+        setText(raw);
+        const normalized = raw.replace(",", ".");
+        if (normalized === "" || normalized === ".") {
+          onChange(undefined);
+          return;
+        }
+        if (normalized.endsWith(".")) return;
+        const next = Number(normalized);
+        if (!Number.isNaN(next)) onChange(next);
+      }}
+      onBlur={() => {
+        const normalized = text.replace(",", ".");
+        if (normalized === "" || normalized === ".") {
+          setText("");
+          onChange(undefined);
+          return;
+        }
+        const next = Number(normalized);
+        if (!Number.isNaN(next)) {
+          setText(String(next));
+          onChange(next);
+        }
+      }}
+    />
+  );
+}
+
 function printTTN(plumbLog: PlumbLog) {
   const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -659,7 +730,7 @@ function ChangeApplicationDialog({
     ? searchResult && searchResult !== "not_found"
       ? [searchResult]
       : []
-    : dayApps;
+    : sortBindingApplications(dayApps);
   const showLoading = searchId ? isSearching : dayLoading;
   const showNotFound =
     !!searchId && searchResult === "not_found" && !isSearching;
@@ -692,7 +763,7 @@ function ChangeApplicationDialog({
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-border">
-                {["ID", "Заказчик", "Объект", "МБ", "Куб."].map((h) => (
+                {["ID", "Статус", "Заказчик", "Объект", "МБ", "Куб."].map((h) => (
                   <th
                     key={h}
                     className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
@@ -706,7 +777,7 @@ function ChangeApplicationDialog({
               {showLoading ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-6 text-center text-muted-foreground"
                   >
                     <Loader2 className="inline h-4 w-4 animate-spin" />
@@ -715,7 +786,7 @@ function ChangeApplicationDialog({
               ) : showNotFound ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-6 text-center text-muted-foreground"
                   >
                     Заявка не найдена
@@ -724,35 +795,47 @@ function ChangeApplicationDialog({
               ) : rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-6 text-center text-muted-foreground"
                   >
                     Заявок нет
                   </td>
                 </tr>
               ) : (
-                rows.map((app) => (
-                  <tr
-                    key={app.id}
-                    className={cn(
-                      "border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors",
-                      app.id === plumbLog.applicationId && "bg-primary/10",
-                    )}
-                    onClick={() => bindMutation.mutate(app.id)}
-                  >
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {app.id}
-                    </td>
-                    <td className="px-3 py-2">{app.customer?.name ?? "—"}</td>
-                    <td className="px-3 py-2">{app.object?.name ?? "—"}</td>
-                    <td className="px-3 py-2">{app.material?.name ?? "—"}</td>
-                    <td className="px-3 py-2">
-                      {app.targetVolume != null
-                        ? app.targetVolume.toFixed(2)
-                        : "—"}
-                    </td>
-                  </tr>
-                ))
+                rows.map((app) => {
+                  const status = getBindingStatus(app);
+                  return (
+                    <tr
+                      key={app.id}
+                      className={cn(
+                        "border-b border-border/50 cursor-pointer hover:bg-primary/5 transition-colors",
+                        app.id === plumbLog.applicationId && "bg-primary/10",
+                      )}
+                      onClick={() => bindMutation.mutate(app.id)}
+                    >
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {app.id}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs">
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: status.color }}
+                          />
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">{app.customer?.name ?? "—"}</td>
+                      <td className="px-3 py-2">{app.object?.name ?? "—"}</td>
+                      <td className="px-3 py-2">{app.material?.name ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        {app.targetVolume != null
+                          ? app.targetVolume.toFixed(2)
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1201,18 +1284,9 @@ function PlumbLogDetail({
                         name="volume"
                         control={control}
                         render={({ field }) => (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="bg-background-elevated border-border h-9"
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value
-                                  ? Number(e.target.value)
-                                  : undefined,
-                              )
-                            }
+                          <DecimalInput
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         )}
                       />
@@ -1225,18 +1299,9 @@ function PlumbLogDetail({
                         name="returnVolume"
                         control={control}
                         render={({ field }) => (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            className="bg-background-elevated border-border h-9"
-                            value={field.value ?? ""}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value
-                                  ? Number(e.target.value)
-                                  : undefined,
-                              )
-                            }
+                          <DecimalInput
+                            value={field.value}
+                            onChange={field.onChange}
                           />
                         )}
                       />
