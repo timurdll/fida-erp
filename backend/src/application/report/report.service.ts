@@ -34,24 +34,33 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
+/** Принудительно переводим дату в таймзону Казахстана (UTC+5) для форматирования */
+function getKZDate(d: Date): Date {
+  return new Date(d.getTime() + 5 * 60 * 60 * 1000);
+}
+
 /** Формат ячеек «заезд/выезд» и «Дата»: dd-MM-yyyy HH:mm (тире). */
 function fmtCell(d: Date | null): string {
   if (!d) return '';
-  return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const kz = getKZDate(d);
+  return `${pad2(kz.getUTCDate())}-${pad2(kz.getUTCMonth() + 1)}-${kz.getUTCFullYear()} ${pad2(kz.getUTCHours())}:${pad2(kz.getUTCMinutes())}`;
 }
 
 /** Формат дат в заголовке отчёта: dd.MM.yyyy HH:mm (точки). */
 function fmtTitle(d: Date): string {
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const kz = getKZDate(d);
+  return `${pad2(kz.getUTCDate())}.${pad2(kz.getUTCMonth() + 1)}.${kz.getUTCFullYear()} ${pad2(kz.getUTCHours())}:${pad2(kz.getUTCMinutes())}`;
 }
 
 /** Формат заголовков Fida: dd-MM-yyyy HH:mm (как в старом печатном отчёте). */
 function fmtFidaTitle(d: Date): string {
-  return `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const kz = getKZDate(d);
+  return `${pad2(kz.getUTCDate())}-${pad2(kz.getUTCMonth() + 1)}-${kz.getUTCFullYear()} ${pad2(kz.getUTCHours())}:${pad2(kz.getUTCMinutes())}`;
 }
 
 function fmtApplicationDate(r: ReportApplicationRow): string {
-  const date = `${pad2(r.deliveryDate.getDate())}-${pad2(r.deliveryDate.getMonth() + 1)}-${r.deliveryDate.getFullYear()}`;
+  const kz = getKZDate(r.deliveryDate);
+  const date = `${pad2(kz.getUTCDate())}-${pad2(kz.getUTCMonth() + 1)}-${kz.getUTCFullYear()}`;
   return [date, r.deliveryTime].filter(Boolean).join('\n');
 }
 
