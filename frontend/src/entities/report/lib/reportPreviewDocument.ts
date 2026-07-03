@@ -157,7 +157,7 @@ function buildFidaSummaryTable(data: FidaSummaryData): string {
   }
   const totalPercent = totalPlan > 0 ? Math.round((totalFact / totalPlan) * 100) : 0
 
-  const materialSums = data.materialColumns.map(col => col.values.reduce((a, b) => a + (b || 0), 0))
+  const materialSums = data.materialColumns.map(col => col.values.reduce((a: number, b) => a + (b ?? 0), 0))
 
   const summaryLeftValues: ReportCellValue[] = [
     null, 'ИТОГО', null, null, totalPlan, totalFact, `${totalPercent}%`, null
