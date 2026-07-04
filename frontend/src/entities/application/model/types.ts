@@ -60,15 +60,24 @@ export interface Application {
 }
 
 export function isWorkedApplication(app: Pick<Application, 'status' | 'progress'>): boolean {
-  return app.status === 'COMPLETED' || app.progress.remainVolume <= 0
+  return app.status === 'COMPLETED' || app.status === 'CANCELLED'
+}
+
+/** Возвращает приоритет для сортировки:
+ *  0 — PENDING / не начата (сверху)
+ *  1 — IN_PROGRESS (в середине)
+ *  2 — COMPLETED / CANCELLED (снизу)
+ */
+function sortPriority(app: Pick<Application, 'status' | 'progress'>): number {
+  if (app.status === 'COMPLETED' || app.status === 'CANCELLED') return 2
+  if (app.status === 'IN_PROGRESS' || app.progress.shippedVolume > 0 || app.progress.loadingVolume > 0) return 1
+  return 0
 }
 
 export function sortApplicationsWithWorkedLast<T extends Pick<Application, 'status' | 'progress'>>(
   applications: T[],
 ): T[] {
-  return [...applications].sort(
-    (a, b) => Number(isWorkedApplication(a)) - Number(isWorkedApplication(b)),
-  )
+  return [...applications].sort((a, b) => sortPriority(a) - sortPriority(b))
 }
 
 export interface CreateApplicationDto {

@@ -79,10 +79,12 @@ function AccordionRow({
           >
             + Взвешивание
           </Button>
-          <Button size="sm" variant="outline"
-            onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
-            Завершить досрочно
-          </Button>
+          {detail?.status !== 'COMPLETED' && detail?.status !== 'CANCELLED' && (
+            <Button size="sm" variant="outline"
+              onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
+              Завершить досрочно
+            </Button>
+          )}
           <Button size="sm" variant="destructive"
             onClick={() => { if (window.confirm('Деактивировать заявку?')) onDeactivate() }}>
             Деактивировать
@@ -159,10 +161,12 @@ function JournalMobileExpanded({
         >
           + Взвешивание
         </Button>
-        <Button size="sm" variant="outline"
-          onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
-          Завершить
-        </Button>
+        {detail?.status !== 'COMPLETED' && detail?.status !== 'CANCELLED' && (
+          <Button size="sm" variant="outline"
+            onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
+            Завершить
+          </Button>
+        )}
         <Button size="sm" variant="destructive"
           onClick={() => { if (window.confirm('Деактивировать заявку?')) onDeactivate() }}>
           Деактивировать

@@ -55,9 +55,9 @@ export class PlumbLogService {
     }
 
     const updated = await this.repo.update(id, patch);
+    await this.syncApplicationStatus(updated.applicationId, { reopen: true });
     if (applicationChanged) {
       await this.syncApplicationStatus(existing.applicationId, { reopen: true });
-      await this.syncApplicationStatus(updated.applicationId, { reopen: true });
     }
     return updated;
   }
@@ -105,7 +105,7 @@ export class PlumbLogService {
       return;
     }
 
-    if (application.progress.shippedVolume >= application.targetVolume) {
+    if (application.progress.shippedVolume + 0.001 >= application.targetVolume) {
       await this.applicationRepo.updateStatus(applicationId, ApplicationStatus.COMPLETED);
     } else if (
       application.progress.shippedVolume > 0 ||
