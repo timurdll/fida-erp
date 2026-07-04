@@ -110,8 +110,8 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
       data: {
         tare,
         net,
-        firstWeighingAt: new Date(),
-        firstOperatorId: operatorId,
+        firstWeighingAt: existing?.firstWeighingAt || new Date(),
+        firstOperatorId: existing?.firstOperatorId || operatorId,
       },
       include: INCLUDE,
     });
@@ -126,8 +126,8 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
       data: {
         gross,
         net,
-        secondWeighingAt: new Date(),
-        secondOperatorId: operatorId,
+        secondWeighingAt: existing?.secondWeighingAt || new Date(),
+        secondOperatorId: existing?.secondOperatorId || operatorId,
       },
       include: INCLUDE,
     });
