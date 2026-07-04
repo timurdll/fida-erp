@@ -136,7 +136,11 @@ function DecimalInput({
   const [text, setText] = useState(value != null ? String(value) : "");
 
   useEffect(() => {
-    setText(value != null ? String(value) : "");
+    setText((prevText) => {
+      const parsed = prevText === "" || prevText === "." ? undefined : Number(prevText.replace(",", "."));
+      if (value === parsed) return prevText;
+      return value != null ? String(value) : "";
+    });
   }, [value]);
 
   return (
@@ -1092,8 +1096,26 @@ function PlumbLogDetail({
       ? grossNum - tareNum
       : null;
 
-  // isSaving — единый флаг для кнопки Сохранить
+  // isSaving — единый флаг для кнопки Сохранить всей формы
   const [isSaving, setIsSaving] = useState(false);
+
+  const weighTareMutation = useMutation({
+    mutationFn: (value: number) => weighTare(id, value),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Тара сохранена");
+    },
+    onError: (e: any) => toast.error(e?.message || "Ошибка сохранения тары"),
+  });
+
+  const weighGrossMutation = useMutation({
+    mutationFn: (value: number) => weighGross(id, value),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Брутто сохранено");
+    },
+    onError: (e: any) => toast.error(e?.message || "Ошибка сохранения брутто"),
+  });
 
   const handleCancel = () => {
     reset(defaultValues);
@@ -1777,22 +1799,27 @@ function PlumbLogDetail({
                         variant="outline"
                         className="h-9 whitespace-nowrap gap-1.5"
                         disabled={!isConnected || weight === null}
-                        title={
-                          isConnected
-                            ? `Вес: ${weight} кг`
-                            : "Весы не подключены"
-                        }
+                        title={isConnected ? `Вставить с весов: ${weight} кг` : "Весы не подключены"}
                         onClick={() => {
                           if (weight !== null) setTareInput(String(weight));
                         }}
                       >
-                        Взвесить
+                        С весов
                         {isConnected && weight !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            ({weight})
-                          </span>
+                          <span className="text-xs text-muted-foreground">({weight})</span>
                         )}
                       </Button>
+                      {tareNum !== plumbLog.tare && tareNum !== null && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 whitespace-nowrap"
+                          disabled={weighTareMutation.isPending}
+                          onClick={() => weighTareMutation.mutate(tareNum)}
+                        >
+                          {weighTareMutation.isPending ? "..." : "Сохранить тару"}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -1821,27 +1848,31 @@ function PlumbLogDetail({
                         variant="outline"
                         className="h-9 whitespace-nowrap gap-1.5"
                         disabled={!isConnected || weight === null}
-                        title={
-                          isConnected
-                            ? `Вес: ${weight} кг`
-                            : "Весы не подключены"
-                        }
+                        title={isConnected ? `Вставить с весов: ${weight} кг` : "Весы не подключены"}
                         onClick={() => {
                           if (weight !== null) setGrossInput(String(weight));
                         }}
                       >
-                        Взвесить
+                        С весов
                         {isConnected && weight !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            ({weight})
-                          </span>
+                          <span className="text-xs text-muted-foreground">({weight})</span>
                         )}
                       </Button>
+                      {grossNum !== plumbLog.gross && grossNum !== null && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 whitespace-nowrap"
+                          disabled={grossInvalid || weighGrossMutation.isPending}
+                          onClick={() => weighGrossMutation.mutate(grossNum)}
+                        >
+                          {weighGrossMutation.isPending ? "..." : "Сохранить брутто"}
+                        </Button>
+                      )}
                     </div>
                     {grossInvalid && (
                       <p className="text-xs text-destructive">
-                        Брутто должно быть больше тары (
-                        {tareNum?.toLocaleString("ru-RU")} кг)
+                        Брутто должно быть больше тары ({tareNum?.toLocaleString("ru-RU")} кг)
                       </p>
                     )}
                   </div>
@@ -1893,9 +1924,9 @@ function PlumbLogDetail({
                   )}
 
                   {/* Подсказка */}
-                  {isEditing && (
-                    <p className="text-xs text-muted-foreground/70">
-                      Тара и брутто сохранятся при нажатии «Сохранить»
+                  {(tareNum !== plumbLog.tare || grossNum !== plumbLog.gross) && (
+                    <p className="text-xs font-medium text-warning mt-2">
+                      ⚠️ У вас есть несохраненные данные веса. Нажмите "Сохранить" рядом с полем, чтобы зафиксировать изменения.
                     </p>
                   )}
                 </div>

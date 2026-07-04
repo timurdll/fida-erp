@@ -26,7 +26,18 @@ export class PlumbLogService {
     return item;
   }
 
-  create(dto: CreatePlumbLogDto, operatorId: number) {
+  async create(dto: CreatePlumbLogDto, operatorId: number) {
+    if (dto.applicationId != null && dto.volume != null) {
+      const application = await this.applicationRepo.findById(dto.applicationId);
+      if (application && application.progress) {
+        const remaining = application.targetVolume - application.progress.shippedVolume;
+        if (dto.volume > remaining + 0.001) {
+          throw new BadRequestException(
+            `Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${dto.volume} м³.`,
+          );
+        }
+      }
+    }
     return this.repo.create({ ...dto, firstOperatorId: operatorId });
   }
 
@@ -35,6 +46,24 @@ export class PlumbLogService {
     const patch: UpdatePlumbLogDto = { ...dto };
     const applicationChanged =
       dto.applicationId !== undefined && dto.applicationId !== existing.applicationId;
+
+    if (dto.volume !== undefined && dto.volume !== existing.volume) {
+      const appId = dto.applicationId ?? existing.applicationId;
+      if (appId) {
+        const application = await this.applicationRepo.findById(appId);
+        if (application && application.progress) {
+          const currentVolume = existing.volume ?? 0;
+          const newVolume = dto.volume ?? 0;
+          const shippedWithoutCurrent = application.progress.shippedVolume - currentVolume;
+          const remaining = application.targetVolume - shippedWithoutCurrent;
+          if (newVolume > remaining + 0.001) {
+            throw new BadRequestException(
+              `Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${newVolume} м³.`,
+            );
+          }
+        }
+      }
+    }
 
     if (applicationChanged) {
       const application = await this.applicationRepo.findById(dto.applicationId!);

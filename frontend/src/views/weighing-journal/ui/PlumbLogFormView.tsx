@@ -497,6 +497,15 @@ export function PlumbLogFormView({ applicationId }: Props) {
       toast.error(`Брутто (${gross} кг) должно быть больше тары (${tare} кг)`)
       return
     }
+
+    if (application && formData.volume != null) {
+      const remaining = application.targetVolume - application.progress.shippedVolume;
+      if (formData.volume > remaining + 0.001) {
+        toast.error(`Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${formData.volume} м³.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true)
     try {
       const created = await createPlumbLog(formData)
