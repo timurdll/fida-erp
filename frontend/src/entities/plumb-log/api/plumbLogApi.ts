@@ -1,5 +1,5 @@
 import { apiFetch } from '@/shared/api/client'
-import type { PlumbLog, CreatePlumbLogDto, PlumbLogFilters } from '../model/types'
+import type { PlumbLog, CreatePlumbLogDto, UpdatePlumbLogDto, PlumbLogFilters } from '../model/types'
 
 export function getPlumbLogs(filters: PlumbLogFilters = {}): Promise<PlumbLog[]> {
   const q = new URLSearchParams()
@@ -17,7 +17,7 @@ export function createPlumbLog(dto: CreatePlumbLogDto): Promise<PlumbLog> {
   return apiFetch<PlumbLog>('/plumb-logs', { method: 'POST', body: JSON.stringify(dto) })
 }
 
-export function updatePlumbLog(id: number, dto: Partial<CreatePlumbLogDto>): Promise<PlumbLog> {
+export function updatePlumbLog(id: number, dto: UpdatePlumbLogDto): Promise<PlumbLog> {
   return apiFetch<PlumbLog>('/plumb-logs/' + id, { method: 'PATCH', body: JSON.stringify(dto) })
 }
 

@@ -71,6 +71,30 @@ export interface CreatePlumbLogDto {
   gross?: number
 }
 
+export interface UpdatePlumbLogDto {
+  supplierId?: number
+  customerId?: number
+  materialId?: number
+  transportId?: number | null
+  objectId?: number | null
+  driverId?: number | null
+  carrierId?: number | null
+  applicationId?: number | null
+  bsuId?: number | null
+  constructionId?: number | null
+  volume?: number | null
+  returnVolume?: number | null
+  sealNumber?: string | null
+  slumpCone?: string | null
+  deliveryType?: string | null
+  nomenclatureId?: number | null
+  impurity?: number | null
+  cleanNet?: number | null
+  documentWeight?: number | null
+  tare?: number | null
+  gross?: number | null
+}
+
 export interface PlumbLogFilters {
   dateFrom?: string
   dateTo?: string

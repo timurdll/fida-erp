@@ -63,8 +63,8 @@ import { getNomenclatures } from "@/entities/nomenclature/api/nomenclatureApi";
 import { getObjects } from "@/entities/object/api/objectApi";
 import { getCarriers } from "@/entities/carrier/api/carrierApi";
 import type {
-  CreatePlumbLogDto,
   PlumbLog,
+  UpdatePlumbLogDto,
 } from "@/entities/plumb-log/model/types";
 
 interface Props {
@@ -130,14 +130,18 @@ function DecimalInput({
   value,
   onChange,
 }: {
-  value: number | undefined;
-  onChange: (value: number | undefined) => void;
+  value: number | null | undefined;
+  onChange: (value: number | null) => void;
 }) {
   const [text, setText] = useState(value != null ? String(value) : "");
 
   useEffect(() => {
     setText((prevText) => {
-      const parsed = prevText === "" || prevText === "." ? undefined : Number(prevText.replace(",", "."));
+      const normalized = prevText.replace(",", ".");
+      const parsed =
+        normalized === "" || normalized === "." || normalized.endsWith(".")
+          ? null
+          : Number(normalized);
       if (value === parsed) return prevText;
       return value != null ? String(value) : "";
     });
@@ -155,7 +159,7 @@ function DecimalInput({
         setText(raw);
         const normalized = raw.replace(",", ".");
         if (normalized === "" || normalized === ".") {
-          onChange(undefined);
+          onChange(null);
           return;
         }
         if (normalized.endsWith(".")) return;
@@ -166,7 +170,7 @@ function DecimalInput({
         const normalized = text.replace(",", ".");
         if (normalized === "" || normalized === ".") {
           setText("");
-          onChange(undefined);
+          onChange(null);
           return;
         }
         const next = Number(normalized);
@@ -1033,22 +1037,22 @@ function PlumbLogDetail({
     bsuId: plumbLog.bsuId ?? undefined,
     constructionId: plumbLog.constructionId ?? undefined,
     nomenclatureId: plumbLog.nomenclatureId ?? undefined,
-    volume: plumbLog.volume ?? undefined,
-    returnVolume: plumbLog.returnVolume ?? undefined,
+    volume: plumbLog.volume ?? null,
+    returnVolume: plumbLog.returnVolume ?? null,
     sealNumber: plumbLog.sealNumber ?? undefined,
     slumpCone: plumbLog.slumpCone ?? undefined,
     deliveryType: plumbLog.deliveryType ?? undefined,
     impurity: plumbLog.impurity ?? undefined,
     cleanNet: plumbLog.cleanNet ?? undefined,
     documentWeight: plumbLog.documentWeight ?? undefined,
-  } satisfies Partial<CreatePlumbLogDto>;
+  } satisfies UpdatePlumbLogDto;
 
   const {
     control,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<Partial<CreatePlumbLogDto>>({ defaultValues });
+  } = useForm<UpdatePlumbLogDto>({ defaultValues });
 
   const selectedTransport = transports.find(
     (t) => t.id === plumbLog.transportId,
@@ -1318,6 +1322,13 @@ function PlumbLogDetail({
                       <Controller
                         name="volume"
                         control={control}
+                        rules={{
+                          validate: (value) => {
+                            if (value == null) return "Обязательное поле";
+                            if (value <= 0) return "Введите число больше 0";
+                            return true;
+                          },
+                        }}
                         render={({ field }) => (
                           <DecimalInput
                             value={field.value}
@@ -1325,6 +1336,11 @@ function PlumbLogDetail({
                           />
                         )}
                       />
+                      {errors.volume && (
+                        <p className="text-xs text-destructive">
+                          {errors.volume.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm text-muted-foreground">
