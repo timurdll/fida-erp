@@ -269,10 +269,12 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
 
   const getAppsForSlot = (dateStr: string, slotTime: string): Application[] => {
     const slotHour = slotTime.split(':')[0]
-    return applications.filter(
-      (app) =>
-        app.deliveryDate.slice(0, 10) === dateStr &&
-        app.deliveryTime?.startsWith(slotHour + ':'),
+    return sortApplicationsWithWorkedLast(
+      applications.filter(
+        (app) =>
+          app.deliveryDate.slice(0, 10) === dateStr &&
+          app.deliveryTime?.startsWith(slotHour + ':'),
+      ),
     )
   }
 

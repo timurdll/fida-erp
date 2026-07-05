@@ -64,14 +64,14 @@ export function isWorkedApplication(app: Pick<Application, 'status' | 'progress'
 }
 
 /** Возвращает приоритет для сортировки:
- *  0 — PENDING / не начата (сверху)
- *  1 — IN_PROGRESS (в середине)
+ *  0 — IN_PROGRESS / есть отгрузка или погрузка (сверху)
+ *  1 — PENDING / не начата (после заявок в работе)
  *  2 — COMPLETED / CANCELLED (снизу)
  */
 function sortPriority(app: Pick<Application, 'status' | 'progress'>): number {
   if (app.status === 'COMPLETED' || app.status === 'CANCELLED') return 2
-  if (app.status === 'IN_PROGRESS' || app.progress.shippedVolume > 0 || app.progress.loadingVolume > 0) return 1
-  return 0
+  if (app.status === 'IN_PROGRESS' || app.progress.shippedVolume > 0 || app.progress.loadingVolume > 0) return 0
+  return 1
 }
 
 export function sortApplicationsWithWorkedLast<T extends Pick<Application, 'status' | 'progress'>>(
