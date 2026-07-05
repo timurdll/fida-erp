@@ -33,9 +33,19 @@ export function ApplicationProgressBar({
       : size === 'lg'
         ? 'h-4'
         : 'h-2.5'
-  const textSize = size === 'sm' ? 'text-[11px]' : 'text-xs'
-  const segmentClass = `flex h-full min-w-0 items-center justify-center overflow-hidden px-1 text-center font-medium leading-none tabular-nums transition-all ${textSize}`
-  const labeledSegmentMinWidth = showText ? '3.75rem' : undefined
+  const segmentClass =
+    'flex h-full min-w-0 items-center justify-center overflow-hidden px-1.5 text-center font-medium leading-none tabular-nums transition-all'
+  const labelClass = `${size === 'sm' ? 'text-[11px]' : 'text-xs'} block whitespace-nowrap`
+  const labeledSegmentMinWidth = size === 'sm' ? '3.5rem' : '3.75rem'
+  const segmentStyle = (pct: number, backgroundColor: string, color: string) => ({
+    flexBasis: showText ? 0 : `${pct}%`,
+    flexGrow: showText ? pct : 0,
+    flexShrink: showText ? 1 : 0,
+    minWidth: showText ? labeledSegmentMinWidth : undefined,
+    width: showText ? undefined : `${pct}%`,
+    backgroundColor,
+    color,
+  })
 
   return (
     <div className="w-full">
@@ -47,43 +57,41 @@ export function ApplicationProgressBar({
         {shippedPct > 0 && (
           <div
             className={segmentClass}
-            style={{
-              width: `${shippedPct}%`,
-              minWidth: labeledSegmentMinWidth,
-              flexShrink: 0,
-              backgroundColor: 'var(--success)',
-              color: 'var(--primary-foreground)',
-            }}
+            style={segmentStyle(
+              shippedPct,
+              'var(--success)',
+              'var(--primary-foreground)',
+            )}
           >
-            {showText && <span className="truncate">{shipped.toFixed(2)}</span>}
+            {showText && (
+              <span className={labelClass}>{shipped.toFixed(2)}</span>
+            )}
           </div>
         )}
         {loadingPct > 0 && (
           <div
             className={segmentClass}
-            style={{
-              width: `${loadingPct}%`,
-              minWidth: labeledSegmentMinWidth,
-              flexShrink: 0,
-              backgroundColor: 'var(--warning)',
-              color: 'var(--background-foreground)',
-            }}
+            style={segmentStyle(
+              loadingPct,
+              'var(--warning)',
+              'var(--background-foreground)',
+            )}
           >
-            {showText && <span className="truncate">{loading.toFixed(2)}</span>}
+            {showText && (
+              <span className={labelClass}>{loading.toFixed(2)}</span>
+            )}
           </div>
         )}
         {showText && remainingPct > 0 && (
           <div
             className={segmentClass}
-            style={{
-              width: `${remainingPct}%`,
-              minWidth: labeledSegmentMinWidth,
-              flexShrink: 1,
-              backgroundColor: 'var(--muted)',
-              color: 'var(--background-foreground)',
-            }}
+            style={segmentStyle(
+              remainingPct,
+              'var(--muted)',
+              'var(--background-foreground)',
+            )}
           >
-            <span className="truncate">{remaining.toFixed(2)}</span>
+            <span className={labelClass}>{remaining.toFixed(2)}</span>
           </div>
         )}
       </div>
