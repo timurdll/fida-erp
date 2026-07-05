@@ -499,9 +499,9 @@ export function PlumbLogFormView({ applicationId }: Props) {
     }
 
     if (application && formData.volume != null) {
-      const remaining = application.targetVolume - application.progress.shippedVolume;
-      if (formData.volume > remaining + 0.001) {
-        toast.error(`Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${formData.volume} м³.`);
+      const remaining = application.targetVolume - application.progress.shippedVolume - application.progress.loadingVolume;
+      if (formData.volume > (remaining > 0 ? remaining : 0) + 0.001) {
+        toast.error(`Превышение объема заявки. Доступно: ${(remaining > 0 ? remaining : 0).toFixed(2)} м³, запрошено: ${formData.volume} м³.`);
         return;
       }
     }
@@ -538,8 +538,8 @@ export function PlumbLogFormView({ applicationId }: Props) {
       } else {
         router.push('/plumb/view/' + created.id)
       }
-    } catch {
-      toast.error('Ошибка при создании отвеса')
+    } catch (e: any) {
+      toast.error(e?.message || 'Ошибка при создании отвеса')
     } finally {
       setIsSubmitting(false)
     }

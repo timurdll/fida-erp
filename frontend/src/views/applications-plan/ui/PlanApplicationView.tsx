@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { applicationKeys } from '@/entities/application/model/queryKeys'
 import { getApplicationById, completeApplication, deactivateApplication } from '@/entities/application/api/applicationApi'
-import { APP_STATUS_LABEL } from '@/entities/application/model/types'
+import { APP_STATUS_LABEL, getApplicationProgressDisplay } from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 
 interface Props {
@@ -81,6 +81,7 @@ export function PlanApplicationView({ id, backDate }: Props) {
   }
 
   const plumbs = app.plumbLogs ?? []
+  const progress = getApplicationProgressDisplay(app)
 
   return (
     <div className="min-h-screen p-6">
@@ -150,31 +151,33 @@ export function PlanApplicationView({ id, backDate }: Props) {
               Прогресс отгрузки
             </h2>
             <ApplicationProgressBar
-              shipped={app.progress.shippedVolume}
-              loading={app.progress.loadingVolume}
-              total={app.targetVolume}
+              shipped={progress.shipped}
+              loading={progress.loading}
+              total={progress.total}
+              completed={progress.isCompleted}
               size="lg"
+              showText
             />
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Отгружено</span>
                 <span className="font-medium" style={{ color: 'var(--success)' }}>
-                  {app.progress.shippedVolume.toFixed(2)} м³
+                  {progress.shipped.toFixed(2)} м³
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">На погрузке</span>
                 <span className="font-medium" style={{ color: 'var(--warning)' }}>
-                  {app.progress.loadingVolume.toFixed(2)} м³
+                  {progress.loading.toFixed(2)} м³
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Осталось</span>
-                <span className="font-medium text-foreground">{app.progress.remainVolume.toFixed(2)} м³</span>
+                <span className="font-medium text-foreground">{progress.remain.toFixed(2)} м³</span>
               </div>
               <div className="flex justify-between border-t border-border pt-2 text-sm">
                 <span className="text-muted-foreground">Целевая кубатура</span>
-                <span className="font-semibold text-foreground">{app.targetVolume.toFixed(2)} м³</span>
+                <span className="font-semibold text-foreground">{progress.targetVolumeLabel} м³</span>
               </div>
             </div>
           </div>
@@ -208,6 +211,14 @@ export function PlanApplicationView({ id, backDate }: Props) {
                   variant="outline"
                   disabled={completeMutation.isPending}
                   onClick={() => {
+                    if (progress.loading > 0) {
+                      toast.error('Нельзя завершить досрочно: есть отвесы в процессе погрузки.')
+                      return
+                    }
+                    if (progress.shipped === 0) {
+                      toast.error('Нельзя завершить досрочно: нет ни одного завершенного отвеса (отгружено 0 м³).')
+                      return
+                    }
                     if (window.confirm('Завершить заявку досрочно?')) completeMutation.mutate()
                   }}
                 >

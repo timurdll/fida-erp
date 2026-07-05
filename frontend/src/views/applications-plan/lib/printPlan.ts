@@ -1,4 +1,5 @@
 import type { Application } from '@/entities/application/model/types'
+import { getApplicationTargetVolumeLabel } from '@/entities/application/model/types'
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) =>
@@ -23,7 +24,7 @@ export function buildPlanHtml(applications: Application[], date: string): string
         app.customer?.name ?? '—',
         app.object?.name ?? '—',
         app.material?.name ?? '—',
-        String(app.targetVolume ?? '—'),
+        getApplicationTargetVolumeLabel(app),
         app.slumpCone != null ? String(app.slumpCone) : '—',
         app.construction?.name ?? '—',
         app.deliveryMethod?.name ?? '—',

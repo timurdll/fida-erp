@@ -47,7 +47,11 @@ const INCLUDE = {
 export class PrismaApplicationRepository implements IApplicationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private calcProgress(plumbs: any[], targetVolume: number): ApplicationProgress {
+  private calcProgress(
+    plumbs: any[],
+    targetVolume: number,
+    status: ApplicationStatus,
+  ): ApplicationProgress {
     const shippedVolume = plumbs
       .filter((p) => p.gross !== null)
       .reduce((s, p) => s + (p.volume ?? 0), 0);
@@ -57,7 +61,10 @@ export class PrismaApplicationRepository implements IApplicationRepository {
     return {
       shippedVolume,
       loadingVolume,
-      remainVolume: targetVolume - shippedVolume - loadingVolume,
+      remainVolume:
+        status === ApplicationStatus.COMPLETED
+          ? 0
+          : targetVolume - shippedVolume - loadingVolume,
       totalPlumbs: plumbs.length,
     };
   }
@@ -90,7 +97,7 @@ export class PrismaApplicationRepository implements IApplicationRepository {
       isActive: r.isActive,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
-      progress: this.calcProgress(plumbs, r.targetVolume),
+      progress: this.calcProgress(plumbs, r.targetVolume, r.status as ApplicationStatus),
     };
     if (includePlumbs) {
       entity.plumbLogs = plumbs;

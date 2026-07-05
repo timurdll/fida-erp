@@ -20,6 +20,14 @@ interface Props {
   presetTime?: string  // HH:mm from calendar cell click
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+function formatVolume(value: number) {
+  return value.toFixed(2)
+}
+
 export function PlanApplicationFormView({ editId, presetDate, presetTime }: Props) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -38,7 +46,7 @@ export function PlanApplicationFormView({ editId, presetDate, presetTime }: Prop
       toast.success('Заявка создана')
       router.push('/plan?date=' + data.deliveryDate.slice(0, 10))
     },
-    onError: () => toast.error('Ошибка при создании заявки'),
+    onError: (error) => toast.error(getErrorMessage(error, 'Ошибка при создании заявки')),
   })
 
   const updateMutation = useMutation({
@@ -49,7 +57,7 @@ export function PlanApplicationFormView({ editId, presetDate, presetTime }: Prop
       toast.success('Заявка обновлена')
       router.push('/plan/view/' + editId)
     },
-    onError: () => toast.error('Ошибка при обновлении заявки'),
+    onError: (error) => toast.error(getErrorMessage(error, 'Ошибка при обновлении заявки')),
   })
 
   const handleSubmit = (data: CreateApplicationDto) => {
@@ -77,6 +85,16 @@ export function PlanApplicationFormView({ editId, presetDate, presetTime }: Prop
         ...(presetDate ? { deliveryDate: presetDate } : {}),
         ...(presetTime ? { deliveryTime: presetTime } : {}),
       }
+
+  const shippedVolume = existing?.progress.shippedVolume ?? 0
+  const loadingVolume = existing?.progress.loadingVolume ?? 0
+  const minTargetVolume = existing ? shippedVolume + loadingVolume : undefined
+  const minTargetVolumeDescription =
+    minTargetVolume && minTargetVolume > 0
+      ? loadingVolume > 0
+        ? `Минимум ${formatVolume(minTargetVolume)} м³: ${formatVolume(shippedVolume)} м³ отгружено, ${formatVolume(loadingVolume)} м³ на погрузке.`
+        : `Минимум ${formatVolume(minTargetVolume)} м³: уже отгружено ${formatVolume(shippedVolume)} м³.`
+      : undefined
 
   return (
     <div className="min-h-screen p-6">
@@ -110,6 +128,8 @@ export function PlanApplicationFormView({ editId, presetDate, presetTime }: Prop
         <ApplicationForm
           key={existing?.id ?? `new-${presetDate}-${presetTime}`}
           defaultValues={defaultValues}
+          minTargetVolume={minTargetVolume}
+          minTargetVolumeDescription={minTargetVolumeDescription}
           onSubmit={handleSubmit}
           isLoading={createMutation.isPending || updateMutation.isPending}
           submitLabel={isEdit ? 'Сохранить изменения' : 'Добавить в план отгрузки'}

@@ -18,6 +18,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Prevent scroll from changing number input values globally */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('wheel', function(e) {
+            if (document.activeElement && document.activeElement.type === 'number') {
+              document.activeElement.blur();
+            }
+          }, { passive: true });
+        ` }} />
+      </head>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
         <ThemeProvider>
           <Providers>

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Plus,
   Printer,
@@ -13,7 +13,6 @@ import {
   Eye,
   Pencil,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DatePickerButton } from '@/shared/ui/date-picker-button'
@@ -32,9 +31,14 @@ import {
 } from '@/shared/ui/select'
 import { cn } from '@/shared/lib/utils'
 import { applicationKeys } from '@/entities/application/model/queryKeys'
-import { getApplications, deactivateApplication, completeApplication } from '@/entities/application/api/applicationApi'
+import { getApplications } from '@/entities/application/api/applicationApi'
 import type { Application } from '@/entities/application/model/types'
-import { APP_STATUS_LABEL, sortApplicationsWithWorkedLast } from '@/entities/application/model/types'
+import {
+  APP_STATUS_LABEL,
+  getApplicationProgressDisplay,
+  getApplicationTargetVolumeLabel,
+  sortApplicationsWithWorkedLast,
+} from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { printApplicationsPlan } from '../lib/printPlan'
 import { toLocalDateString as toLocalDateStr } from '@/shared/utils/date'
@@ -149,7 +153,9 @@ function CalendarCell({
       )}
     >
       {apps.length > 0 ? (
-        apps.map((app) => (
+        apps.map((app) => {
+          const progress = getApplicationProgressDisplay(app)
+          return (
           <Popover key={app.id}>
             <PopoverTrigger asChild>
               <div
@@ -166,7 +172,7 @@ function CalendarCell({
                   {app.object.name}
                 </p>
                 <div className={cn('flex items-center justify-between mt-1.5', expanded ? 'text-sm' : 'text-xs')}>
-                  <span className="text-foreground font-medium">{app.targetVolume.toFixed(1)} м³</span>
+                  <span className="text-foreground font-medium">{getApplicationTargetVolumeLabel(app, 1)} м³</span>
                   <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', BADGE_CLASS[app.status])}>
                     {app.material.name}
                   </span>
@@ -187,7 +193,7 @@ function CalendarCell({
                 <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Объём</span>
-                    <p className="font-medium text-foreground">{app.targetVolume.toFixed(2)} м³</p>
+                    <p className="font-medium text-foreground">{progress.targetVolumeLabel} м³</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Материал</span>
@@ -225,7 +231,8 @@ function CalendarCell({
               </div>
             </PopoverContent>
           </Popover>
-        ))
+          )
+        })
       ) : (
         <button
           onClick={() => onAddClick(dateStr, time)}
@@ -251,13 +258,9 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
   const todayDate = new Date()
   todayDate.setHours(0, 0, 0, 0)
 
-  const [calViewMode, setCalViewMode] = useState<'week' | 'day'>('week')
-  // На мобиле недельная сетка (8 колонок) не помещается — принудительно день-режим.
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setCalViewMode('day')
-    }
-  }, [])
+  const [calViewMode, setCalViewMode] = useState<'week' | 'day'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week',
+  )
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(todayDate))
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(() => {
     const mon = getMonday(todayDate)
@@ -281,7 +284,7 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
   const getDayTotal = (dateStr: string) =>
     applications
       .filter((a) => a.deliveryDate.slice(0, 10) === dateStr)
-      .reduce((s, a) => s + a.targetVolume, 0)
+      .reduce((s, a) => s + getApplicationProgressDisplay(a).total, 0)
 
   return (
     <div>
@@ -453,7 +456,6 @@ function CalendarView({ applications, onApplicationClick, onAddClick }: Calendar
 
 export function ApplicationsPlanPage() {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   // Дата хранится в URL (?date=YYYY-MM-DD), чтобы переживать переход на карточку и обратно
   const date = searchParams.get('date') ?? toLocalDateStr(new Date())
@@ -479,27 +481,9 @@ export function ApplicationsPlanPage() {
   })
 
   const totalShipped = applications.reduce((s, a) => s + a.progress.shippedVolume, 0)
-  const totalLoading = applications.reduce((s, a) => s + a.progress.loadingVolume, 0)
-  const totalRemain = applications.reduce((s, a) => s + a.progress.remainVolume, 0)
+  const totalLoading = applications.reduce((s, a) => s + getApplicationProgressDisplay(a).loading, 0)
+  const totalRemain = applications.reduce((s, a) => s + getApplicationProgressDisplay(a).remain, 0)
   const listApplications = sortApplicationsWithWorkedLast(applications)
-
-  const deactivateMutation = useMutation({
-    mutationFn: deactivateApplication,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.lists() })
-      toast.success('Деактивировано')
-    },
-    onError: () => toast.error('Ошибка'),
-  })
-
-  const completeMutation = useMutation({
-    mutationFn: completeApplication,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: applicationKeys.lists() })
-      toast.success('Завершено')
-    },
-    onError: () => toast.error('Ошибка'),
-  })
 
   // Format date for list view header (parse manually to avoid timezone shift)
   const [y, mo, d] = date.split('-').map(Number)
@@ -645,7 +629,9 @@ export function ApplicationsPlanPage() {
                       </td>
                     </tr>
                   ) : (
-                    listApplications.map((app, index) => (
+                    listApplications.map((app, index) => {
+                      const progress = getApplicationProgressDisplay(app)
+                      return (
                       <tr
                         key={app.id}
                         className={cn(
@@ -669,19 +655,21 @@ export function ApplicationsPlanPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
-                          {app.targetVolume.toFixed(2)}
+                          {progress.targetVolumeLabel}
                         </td>
                         <td className="px-4 py-3">
                           <ApplicationProgressBar
-                            shipped={app.progress.shippedVolume}
-                            loading={app.progress.loadingVolume}
-                            total={app.targetVolume}
+                            shipped={progress.shipped}
+                            loading={progress.loading}
+                            total={progress.total}
+                            completed={progress.isCompleted}
                             size="sm"
                             showText
                           />
                         </td>
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -698,7 +686,9 @@ export function ApplicationsPlanPage() {
               Заявок на выбранную дату нет
             </div>
           ) : (
-            listApplications.map((app) => (
+            listApplications.map((app) => {
+              const progress = getApplicationProgressDisplay(app)
+              return (
               <MobileCard
                 key={app.id}
                 onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}
@@ -709,10 +699,11 @@ export function ApplicationsPlanPage() {
                 rows={[
                   { label: 'Время', value: app.deliveryTime ?? '—' },
                   { label: 'Материал', value: app.material.name },
-                  { label: 'Объём', value: `${app.targetVolume.toFixed(2)} м³` },
+                  { label: 'Объём', value: `${progress.targetVolumeLabel} м³` },
                 ]}
               />
-            ))
+              )
+            })
           )}
         </div>
         </>

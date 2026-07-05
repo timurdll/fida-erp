@@ -4,6 +4,7 @@ interface ApplicationProgressBarProps {
   shipped: number
   loading: number
   total: number
+  completed?: boolean
   showText?: boolean
   size?: 'sm' | 'md' | 'lg'
 }
@@ -12,14 +13,15 @@ export function ApplicationProgressBar({
   shipped,
   loading,
   total,
+  completed = false,
   showText = false,
   size = 'md',
 }: ApplicationProgressBarProps) {
   const safe = total > 0 ? total : 1
-  const shippedPct = Math.min((shipped / safe) * 100, 100)
-  const loadingPct = Math.min((loading / safe) * 100, 100 - shippedPct)
-  const remaining = Math.max(total - shipped - loading, 0)
-  const remainingPct = Math.max(100 - shippedPct - loadingPct, 0)
+  const shippedPct = completed ? 100 : Math.min((shipped / safe) * 100, 100)
+  const loadingPct = completed ? 0 : Math.min((loading / safe) * 100, 100 - shippedPct)
+  const remaining = completed ? 0 : Math.max(total - shipped - loading, 0)
+  const remainingPct = completed ? 0 : Math.max(100 - shippedPct - loadingPct, 0)
   const valueLabel = `Отгружено ${shipped.toFixed(2)} м³, в процессе ${loading.toFixed(2)} м³, остаток ${remaining.toFixed(2)} м³`
 
   const height = showText
@@ -41,7 +43,8 @@ export function ApplicationProgressBar({
     flexBasis: showText ? 0 : `${pct}%`,
     flexGrow: showText ? pct : 0,
     flexShrink: showText ? 1 : 0,
-    minWidth: showText ? labeledSegmentMinWidth : undefined,
+    // Only apply minWidth when segment actually has content
+    minWidth: showText && pct > 0 ? labeledSegmentMinWidth : undefined,
     width: showText ? undefined : `${pct}%`,
     backgroundColor,
     color,
@@ -82,7 +85,7 @@ export function ApplicationProgressBar({
             )}
           </div>
         )}
-        {showText && remainingPct > 0 && (
+        {showText && remainingPct > 0 && remaining > 0.001 && (
           <div
             className={segmentClass}
             style={segmentStyle(

@@ -23,7 +23,10 @@ import {
   deactivateApplication,
 } from '@/entities/application/api/applicationApi'
 import type { Application, PlumbLogSummary } from '@/entities/application/model/types'
-import { sortApplicationsWithWorkedLast } from '@/entities/application/model/types'
+import {
+  getApplicationProgressDisplay,
+  sortApplicationsWithWorkedLast,
+} from '@/entities/application/model/types'
 import { ApplicationProgressBar } from '@/features/applications/ui/ApplicationProgressBar'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { toLocalDateString } from '@/shared/utils/date'
@@ -81,7 +84,17 @@ function AccordionRow({
           </Button>
           {detail?.status !== 'COMPLETED' && detail?.status !== 'CANCELLED' && (
             <Button size="sm" variant="outline"
-              onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
+              onClick={() => {
+                if ((detail?.progress?.loadingVolume ?? 0) > 0) {
+                  toast.error('Нельзя завершить досрочно: есть отвесы в процессе погрузки.')
+                  return
+                }
+                if ((detail?.progress?.shippedVolume ?? 0) === 0) {
+                  toast.error('Нельзя завершить досрочно: нет ни одного завершенного отвеса (отгружено 0 м³).')
+                  return
+                }
+                if (window.confirm('Завершить заявку досрочно?')) onComplete()
+              }}>
               Завершить досрочно
             </Button>
           )}
@@ -163,8 +176,18 @@ function JournalMobileExpanded({
         </Button>
         {detail?.status !== 'COMPLETED' && detail?.status !== 'CANCELLED' && (
           <Button size="sm" variant="outline"
-            onClick={() => { if (window.confirm('Завершить заявку досрочно?')) onComplete() }}>
-            Завершить
+            onClick={() => {
+              if ((detail?.progress?.loadingVolume ?? 0) > 0) {
+                toast.error('Нельзя завершить досрочно: есть отвесы в процессе погрузки.')
+                return
+              }
+              if ((detail?.progress?.shippedVolume ?? 0) === 0) {
+                toast.error('Нельзя завершить досрочно: нет ни одного завершенного отвеса (отгружено 0 м³).')
+                return
+              }
+              if (window.confirm('Завершить заявку досрочно?')) onComplete()
+            }}>
+            Завершить досрочно
           </Button>
         )}
         <Button size="sm" variant="destructive"
@@ -220,8 +243,8 @@ export function ApplicationsJournalPage() {
   })
 
   const totalShipped = applications.reduce((s, a) => s + a.progress.shippedVolume, 0)
-  const totalLoading = applications.reduce((s, a) => s + a.progress.loadingVolume, 0)
-  const totalPlan = applications.reduce((s, a) => s + a.targetVolume, 0)
+  const totalLoading = applications.reduce((s, a) => s + getApplicationProgressDisplay(a).loading, 0)
+  const totalPlan = applications.reduce((s, a) => s + getApplicationProgressDisplay(a).total, 0)
   const listApplications = sortApplicationsWithWorkedLast(applications)
 
   const completeMutation = useMutation({
@@ -306,7 +329,9 @@ export function ApplicationsJournalPage() {
                 {listApplications.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">Заявок на выбранную дату нет</td></tr>
                 ) : (
-                  listApplications.flatMap((app, index) => [
+                  listApplications.flatMap((app, index) => {
+                    const progress = getApplicationProgressDisplay(app)
+                    return [
                     <tr
                       key={app.id}
                       className={`border-b border-border cursor-pointer transition-colors hover:bg-background-elevated ${index % 2 === 1 ? 'bg-foreground/[0.02]' : ''}`}
@@ -326,9 +351,16 @@ export function ApplicationsJournalPage() {
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{app.material.name}</span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-foreground">{app.targetVolume.toFixed(2)} м³</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{progress.targetVolumeLabel} м³</td>
                       <td className="px-4 py-3">
-                        <ApplicationProgressBar shipped={app.progress.shippedVolume} loading={app.progress.loadingVolume} total={app.targetVolume} showText size="sm" />
+                        <ApplicationProgressBar
+                          shipped={progress.shipped}
+                          loading={progress.loading}
+                          total={progress.total}
+                          completed={progress.isCompleted}
+                          showText
+                          size="sm"
+                        />
                       </td>
                     </tr>,
                     ...(expandedId === app.id ? [
@@ -340,7 +372,8 @@ export function ApplicationsJournalPage() {
                         onDeactivate={() => deactivateMutation.mutate(app.id)}
                       />
                     ] : []),
-                  ])
+                    ]
+                  })
                 )}
               </tbody>
             </table>
@@ -357,7 +390,9 @@ export function ApplicationsJournalPage() {
             Заявок на выбранную дату нет
           </div>
         ) : (
-          listApplications.map((app) => (
+          listApplications.map((app) => {
+            const progress = getApplicationProgressDisplay(app)
+            return (
             <div key={app.id}>
               <MobileCard
                 onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
@@ -370,7 +405,7 @@ export function ApplicationsJournalPage() {
                 rows={[
                   { label: 'Объект', value: app.object.name },
                   { label: 'Материал', value: app.material.name },
-                  { label: 'Объём', value: `${app.progress.shippedVolume.toFixed(1)}/${app.targetVolume.toFixed(1)} м³` },
+                  { label: 'Объём', value: `${progress.targetVolumeLabel} м³` },
                 ]}
               />
               {expandedId === app.id && (
@@ -382,7 +417,8 @@ export function ApplicationsJournalPage() {
                 />
               )}
             </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>

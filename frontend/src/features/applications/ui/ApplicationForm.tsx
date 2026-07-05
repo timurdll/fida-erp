@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Building2, Truck, Wrench, CalendarIcon, Clock } from 'lucide-react'
@@ -250,6 +250,8 @@ function CreateObjectForm({
 
 interface ApplicationFormProps {
   defaultValues?: Partial<CreateApplicationDto>
+  minTargetVolume?: number
+  minTargetVolumeDescription?: string
   onSubmit: (data: CreateApplicationDto) => void
   isLoading?: boolean
   submitLabel?: string
@@ -260,16 +262,21 @@ interface ApplicationFormProps {
 
 export function ApplicationForm({
   defaultValues,
+  minTargetVolume,
+  minTargetVolumeDescription,
   onSubmit,
   isLoading,
   submitLabel = 'Добавить в план отгрузки',
   onCancel,
 }: ApplicationFormProps) {
+  const targetVolumeMin = Math.max(0.01, minTargetVolume ?? 0.01)
+  const targetVolumeMinMessage =
+    minTargetVolumeDescription ?? `Обязательное поле (не меньше ${targetVolumeMin.toFixed(2)} м³)`
+
   const {
     register,
     handleSubmit,
     control,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<CreateApplicationDto>({
@@ -284,12 +291,12 @@ export function ApplicationForm({
   const [showCreateCustomer, setShowCreateCustomer] = useState(false)
   const [showCreateObject, setShowCreateObject] = useState(false)
 
-  const customerId = watch('customerId')
+  const customerId = useWatch({ control, name: 'customerId' })
   const prevCustomerIdRef = useRef<number | undefined>(customerId)
 
   useEffect(() => {
     if (prevCustomerIdRef.current !== customerId) {
-      setValue('objectId', undefined as any)
+      setValue('objectId', undefined as unknown as number)
       prevCustomerIdRef.current = customerId
     }
   }, [customerId, setValue])
@@ -343,7 +350,7 @@ export function ApplicationForm({
 
   return (
     <>
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
       {/* Sections share one card, divided by border-b */}
       <div className="rounded-lg border border-border bg-card divide-y divide-border">
 
@@ -461,12 +468,22 @@ export function ApplicationForm({
               </Label>
               <UnitInput
                 unit="м³"
-                min="0.5"
-                step="0.5"
+                min={targetVolumeMin}
+                step="0.01"
                 placeholder="0.00"
-                {...register('targetVolume', { required: true, valueAsNumber: true, min: 0.01 })}
+                {...register('targetVolume', {
+                  required: 'Обязательное поле (> 0)',
+                  valueAsNumber: true,
+                  min: { value: targetVolumeMin, message: targetVolumeMinMessage },
+                })}
               />
-              {errors.targetVolume && <p className="text-xs text-destructive">{'Обязательное поле (> 0)'}</p>}
+              {errors.targetVolume ? (
+                <p className="text-xs text-destructive">
+                  {errors.targetVolume.message ?? 'Обязательное поле (> 0)'}
+                </p>
+              ) : minTargetVolumeDescription ? (
+                <p className="text-xs text-muted-foreground">{minTargetVolumeDescription}</p>
+              ) : null}
             </div>
 
             {/* Интервал погрузки */}

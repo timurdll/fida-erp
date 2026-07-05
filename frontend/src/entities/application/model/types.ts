@@ -103,3 +103,48 @@ export interface ApplicationFilters {
   customerId?: number
   materialId?: number
 }
+
+const VOLUME_EPSILON = 0.001
+
+export function formatApplicationVolume(value: number, digits = 2): string {
+  return value.toFixed(digits)
+}
+
+export function isEarlyCompletedApplication(
+  app: Pick<Application, 'status' | 'targetVolume' | 'progress'>,
+): boolean {
+  return (
+    app.status === 'COMPLETED' &&
+    app.progress.shippedVolume + VOLUME_EPSILON < app.targetVolume
+  )
+}
+
+export function getApplicationTargetVolumeLabel(
+  app: Pick<Application, 'status' | 'targetVolume' | 'progress'>,
+  digits = 2,
+): string {
+  if (!isEarlyCompletedApplication(app)) {
+    return formatApplicationVolume(app.targetVolume, digits)
+  }
+
+  return `${formatApplicationVolume(app.progress.shippedVolume, digits)} (${formatApplicationVolume(app.targetVolume, digits)})`
+}
+
+export function getApplicationProgressDisplay(
+  app: Pick<Application, 'status' | 'targetVolume' | 'progress'>,
+) {
+  const isCompleted = app.status === 'COMPLETED'
+  const shipped = app.progress.shippedVolume
+  const loading = isCompleted ? 0 : app.progress.loadingVolume
+  const total = isEarlyCompletedApplication(app) ? shipped : app.targetVolume
+  const remain = isCompleted ? 0 : Math.max(total - shipped - loading, 0)
+
+  return {
+    shipped,
+    loading,
+    total,
+    remain,
+    isCompleted,
+    targetVolumeLabel: getApplicationTargetVolumeLabel(app),
+  }
+}
