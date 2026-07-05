@@ -26,6 +26,8 @@ const PLUMB_SELECT = {
   driver: { select: { id: true, fullName: true } },
 } as const;
 
+const PLUMB_ORDER_BY = [{ firstWeighingAt: 'asc' as const }, { id: 'asc' as const }];
+
 const INCLUDE = {
   supplier: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true } },
@@ -36,6 +38,7 @@ const INCLUDE = {
   author: { select: { id: true, fullName: true } },
   plumbLogs: {
     where: { isActive: true, isReturn: false },
+    orderBy: PLUMB_ORDER_BY,
     select: PLUMB_SELECT,
   },
 } as const;
