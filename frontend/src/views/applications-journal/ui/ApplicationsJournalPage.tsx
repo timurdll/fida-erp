@@ -67,7 +67,7 @@ function AccordionRow({
   const { data: detail, isLoading } = useQuery({
     queryKey: applicationKeys.detail(applicationId),
     queryFn: () => getApplicationById(applicationId),
-    staleTime: 15_000,
+    staleTime: 5_000,
   })
   const plumbs: PlumbLogSummary[] = detail?.plumbLogs ?? []
   return (
@@ -249,13 +249,23 @@ export function ApplicationsJournalPage() {
 
   const completeMutation = useMutation({
     mutationFn: completeApplication,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: applicationKeys.lists() }); toast.success('Заявка завершена'); setExpandedId(null) },
-    onError: () => toast.error('Ошибка при завершении заявки'),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+      toast.success('Заявка завершена')
+      setExpandedId(null)
+    },
+    onError: (e: any) => toast.error(e?.message || 'Ошибка при завершении заявки'),
   })
   const deactivateMutation = useMutation({
     mutationFn: deactivateApplication,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: applicationKeys.lists() }); toast.success('Заявка деактивирована'); setExpandedId(null) },
-    onError: () => toast.error('Ошибка при деактивации'),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+      toast.success('Заявка деактивирована')
+      setExpandedId(null)
+    },
+    onError: (e: any) => toast.error(e?.message || 'Ошибка при деактивации'),
   })
 
   const formattedDate = new Intl.DateTimeFormat('ru', {

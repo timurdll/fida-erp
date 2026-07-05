@@ -37,6 +37,7 @@ export function PlanApplicationFormView({ editId, presetDate, presetTime }: Prop
     queryKey: applicationKeys.detail(editId!),
     queryFn: () => getApplicationById(editId!),
     enabled: isEdit,
+    staleTime: 0,   // Всегда загружаем свежие данные в форме редактирования
   })
 
   const createMutation = useMutation({

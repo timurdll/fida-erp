@@ -157,6 +157,7 @@ export class PrismaReportRepository implements IReportRepository {
       applicationId: { not: null },
       isActive: true,
       isReturn: false,
+      application: { isActive: true, status: { not: 'CANCELLED' } },
       firstWeighingAt: this.dateWhere(f),
       ...this.optionalWhere(f),
     });
@@ -192,6 +193,7 @@ export class PrismaReportRepository implements IReportRepository {
     const rows = await this.prisma.application.findMany({
       where: {
         isActive: true,
+        status: { not: 'CANCELLED' },
         deliveryDate: { gte: startOfDayUTC, lte: endOfDayUTC },
         ...this.optionalWhere(f),
       },

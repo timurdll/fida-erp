@@ -112,6 +112,21 @@ function addNetTotalRow(
   data.push({ cells, bold: true });
 }
 
+/** Итоговая строка детального отчёта по заявкам: Σ нетто и Σ кубатура. */
+function addZayavkiDetailTotalRow(
+  data: ReportRow[],
+  totalColumns: number,
+  rows: ReportPlumbRow[],
+): void {
+  const totalNet = rows.reduce((sum, row) => sum + (row.net ?? 0), 0);
+  const totalVolume = rows.reduce((sum, row) => sum + (row.volume ?? 0), 0);
+  const cells: ReportRow['cells'] = Array.from({ length: totalColumns }, () => null);
+  cells[7] = 'Итого';
+  cells[8] = totalNet;
+  cells[11] = totalVolume;
+  data.push({ cells, bold: true });
+}
+
 @Injectable()
 export class ReportService {
   constructor(
@@ -362,7 +377,7 @@ export class ReportService {
         r.net, r.gross, r.tare, r.volume, density(r.net, r.volume), r.operatorName,
       ],
     }));
-    addNetTotalRow(data, columns.length, 7, 8, rows);
+    addZayavkiDetailTotalRow(data, columns.length, rows);
     return { title: this.title(ReportType.ZAYAVKI_DETAIL, f), columns, rows: data };
   }
 
