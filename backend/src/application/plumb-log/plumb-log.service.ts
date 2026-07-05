@@ -4,8 +4,18 @@ import type { IPlumbLogRepository, PlumbLogFilters } from '../../domain/plumb-lo
 import { APPLICATION_REPOSITORY } from '../../domain/application/i-application.repository';
 import type { IApplicationRepository } from '../../domain/application/i-application.repository';
 import { ApplicationStatus } from '../../domain/application/application.entity';
+import type { ApplicationEntity } from '../../domain/application/application.entity';
 import { CreatePlumbLogDto } from './dto/create-plumb-log.dto';
 import { UpdatePlumbLogDto } from './dto/update-plumb-log.dto';
+
+const VOLUME_EPSILON = 0.001;
+
+type CurrentPlumbVolume = {
+  applicationId: number | null;
+  volume: number | null;
+  isActive: boolean;
+  isReturn: boolean;
+};
 
 @Injectable()
 export class PlumbLogService {
@@ -27,15 +37,10 @@ export class PlumbLogService {
   }
 
   async create(dto: CreatePlumbLogDto, operatorId: number) {
-    if (dto.applicationId != null && dto.volume != null) {
-      const application = await this.applicationRepo.findById(dto.applicationId);
-      if (application && application.progress) {
-        const remaining = application.targetVolume - application.progress.shippedVolume;
-        if (dto.volume > remaining + 0.001) {
-          throw new BadRequestException(
-            `Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${dto.volume} м³.`,
-          );
-        }
+    if (dto.applicationId != null) {
+      const application = await this.getApplicationOrThrow(dto.applicationId);
+      if (dto.volume != null) {
+        this.assertApplicationVolumeCapacity(application, dto.volume);
       }
     }
     return this.repo.create({ ...dto, firstOperatorId: operatorId });
@@ -46,30 +51,26 @@ export class PlumbLogService {
     const patch: UpdatePlumbLogDto = { ...dto };
     const applicationChanged =
       dto.applicationId !== undefined && dto.applicationId !== existing.applicationId;
+    const volumeChanged = dto.volume !== undefined && dto.volume !== existing.volume;
+    const nextApplicationId =
+      dto.applicationId !== undefined ? dto.applicationId : existing.applicationId;
+    const nextVolume = dto.volume !== undefined ? dto.volume : existing.volume;
+    let linkedApplication: ApplicationEntity | null = null;
 
-    if (dto.volume !== undefined && dto.volume !== existing.volume) {
-      const appId = dto.applicationId ?? existing.applicationId;
-      if (appId) {
-        const application = await this.applicationRepo.findById(appId);
-        if (application && application.progress) {
-          const currentVolume = existing.volume ?? 0;
-          const newVolume = dto.volume ?? 0;
-          const shippedWithoutCurrent = application.progress.shippedVolume - currentVolume;
-          const remaining = application.targetVolume - shippedWithoutCurrent;
-          if (newVolume > remaining + 0.001) {
-            throw new BadRequestException(
-              `Превышение объема заявки. Доступно: ${remaining.toFixed(2)} м³, запрошено: ${newVolume} м³.`,
-            );
-          }
-        }
-      }
+    if (
+      existing.isActive &&
+      !existing.isReturn &&
+      nextApplicationId != null &&
+      nextVolume != null &&
+      (applicationChanged || volumeChanged)
+    ) {
+      linkedApplication = await this.getApplicationOrThrow(nextApplicationId);
+      this.assertApplicationVolumeCapacity(linkedApplication, nextVolume, existing);
     }
 
-    if (applicationChanged) {
-      const application = await this.applicationRepo.findById(dto.applicationId!);
-      if (!application) {
-        throw new NotFoundException(`Заявка #${dto.applicationId} не найдена`);
-      }
+    if (applicationChanged && nextApplicationId != null) {
+      const application =
+        linkedApplication ?? (await this.getApplicationOrThrow(nextApplicationId));
 
       patch.supplierId = application.supplierId;
       patch.customerId = application.customerId;
@@ -115,6 +116,37 @@ export class PlumbLogService {
     const weighed = await this.repo.weighGross(id, weight, operatorId);
     await this.syncApplicationStatus(weighed.applicationId);
     return weighed;
+  }
+
+  private async getApplicationOrThrow(id: number): Promise<ApplicationEntity> {
+    const application = await this.applicationRepo.findById(id);
+    if (!application) {
+      throw new NotFoundException(`Заявка #${id} не найдена`);
+    }
+    return application;
+  }
+
+  private assertApplicationVolumeCapacity(
+    application: ApplicationEntity,
+    requestedVolume: number,
+    current?: CurrentPlumbVolume,
+  ) {
+    if (!application.progress) return;
+
+    const usedVolume =
+      application.progress.shippedVolume + application.progress.loadingVolume;
+    const shouldExcludeCurrent =
+      current?.applicationId === application.id && current.isActive && !current.isReturn;
+    const usedWithoutCurrent = shouldExcludeCurrent
+      ? usedVolume - (current.volume ?? 0)
+      : usedVolume;
+    const remaining = application.targetVolume - usedWithoutCurrent;
+
+    if (requestedVolume > remaining + VOLUME_EPSILON) {
+      throw new BadRequestException(
+        `Превышение объема заявки. Доступно: ${Math.max(0, remaining).toFixed(2)} м³, запрошено: ${requestedVolume} м³.`,
+      );
+    }
   }
 
   // Автопереход статуса заявки после завершённого взвешивания отвеса.
