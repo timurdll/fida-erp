@@ -127,6 +127,16 @@ export class PlumbLogService {
     return application;
   }
 
+  private timeValueChanged(existing: Date | null, incoming: string | undefined): boolean {
+    if (incoming === undefined) return false;
+    if (!existing) return true;
+    return new Date(incoming).getTime() !== existing.getTime();
+  }
+
+  private toMinuteTimestamp(date: Date): number {
+    return Math.floor(date.getTime() / 60_000);
+  }
+
   private assertWeighingTimes(
     existing: { applicationId: number | null; tare: number | null; gross: number | null; firstWeighingAt: Date | null; secondWeighingAt: Date | null },
     dto: UpdatePlumbLogDto,
@@ -142,6 +152,10 @@ export class PlumbLogService {
       );
     }
 
+    const firstChanged = this.timeValueChanged(existing.firstWeighingAt, dto.firstWeighingAt);
+    const secondChanged = this.timeValueChanged(existing.secondWeighingAt, dto.secondWeighingAt);
+    if (!firstChanged && !secondChanged) return;
+
     const first =
       dto.firstWeighingAt !== undefined
         ? new Date(dto.firstWeighingAt)
@@ -155,7 +169,7 @@ export class PlumbLogService {
 
     const isMaterial = existing.applicationId == null;
     if (isMaterial) {
-      if (second.getTime() > first.getTime()) {
+      if (this.toMinuteTimestamp(second) > this.toMinuteTimestamp(first)) {
         throw new BadRequestException(
           'Для сырья время взвешивания брутто должно быть не позже времени взвешивания тары.',
         );
@@ -163,7 +177,7 @@ export class PlumbLogService {
       return;
     }
 
-    if (first.getTime() > second.getTime()) {
+    if (this.toMinuteTimestamp(first) > this.toMinuteTimestamp(second)) {
       throw new BadRequestException(
         'Время взвешивания тары должно быть не позже времени взвешивания брутто.',
       );

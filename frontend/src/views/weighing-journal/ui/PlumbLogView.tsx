@@ -1059,7 +1059,7 @@ function PlumbLogDetail({
     handleSubmit,
     reset,
     setValue,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<UpdatePlumbLogDto>({ defaultValues });
 
   const customerId = useWatch({ control, name: "customerId" });
@@ -1201,7 +1201,11 @@ function PlumbLogDetail({
         await weighGross(id, newGross);
       }
 
-      await updatePlumbLog(id, data);
+      const patch: UpdatePlumbLogDto = { ...data };
+      if (!dirtyFields.firstWeighingAt) delete patch.firstWeighingAt;
+      if (!dirtyFields.secondWeighingAt) delete patch.secondWeighingAt;
+
+      await updatePlumbLog(id, patch);
       invalidate();
       setIsEditing(false);
       toast.success("Сохранено");
