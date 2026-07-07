@@ -55,6 +55,10 @@ function PlumbStatus({ gross }: { gross: number | null }) {
   )
 }
 
+function fmtKg(value: number | null | undefined): string {
+  return value != null ? value.toLocaleString('ru-RU') : '—'
+}
+
 function AccordionRow({
   applicationId, onEdit, onComplete, onDeactivate,
 }: {
@@ -112,7 +116,7 @@ function AccordionRow({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {['ID', 'Авто', 'Водитель', '1е взвешивание', '2е взвешивание', 'БСУ', 'Куб.', 'Статус'].map(h => (
+                  {['ID', 'Авто', 'Водитель', '1е взвешивание', '2е взвешивание', 'Тара', 'Брутто', 'Нетто', 'БСУ', 'Куб.', 'Статус'].map(h => (
                     <th key={h} className="py-2 pr-4 text-left text-xs font-medium text-muted-foreground">{h}</th>
                   ))}
                 </tr>
@@ -133,6 +137,9 @@ function AccordionRow({
                     <td className="py-2 pr-4 text-muted-foreground">
                       {p.secondWeighingAt ? new Date(p.secondWeighingAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
+                    <td className="py-2 pr-4 text-muted-foreground">{fmtKg(p.tare)}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{fmtKg(p.gross)}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">{fmtKg(p.net)}</td>
                     <td className="py-2 pr-4 text-muted-foreground">{p.bsu?.name ?? '—'}</td>
                     <td className="py-2 pr-4">{p.volume != null ? p.volume.toFixed(2) : '—'}</td>
                     <td className="py-2"><PlumbStatus gross={p.gross} /></td>
@@ -213,6 +220,9 @@ function JournalMobileExpanded({
             <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <div><span className="text-xs text-muted-foreground">Водитель</span><div>{p.driver?.fullName ?? '—'}</div></div>
               <div><span className="text-xs text-muted-foreground">Куб.</span><div>{p.volume != null ? p.volume.toFixed(2) : '—'}</div></div>
+              <div><span className="text-xs text-muted-foreground">Тара</span><div>{fmtKg(p.tare)}</div></div>
+              <div><span className="text-xs text-muted-foreground">Брутто</span><div>{fmtKg(p.gross)}</div></div>
+              <div><span className="text-xs text-muted-foreground">Нетто</span><div>{fmtKg(p.net)}</div></div>
               <div><span className="text-xs text-muted-foreground">БСУ</span><div>{p.bsu?.name ?? '—'}</div></div>
             </div>
           </div>
