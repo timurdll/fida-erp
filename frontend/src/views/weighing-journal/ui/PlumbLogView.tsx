@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -37,6 +37,10 @@ import {
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { DateTimePickerField } from "@/shared/ui/datetime-picker-field";
+import {
+  SearchableSelect,
+  type SearchableOption,
+} from "@/shared/ui/SearchableSelect";
 import { useScaleStore } from "@/shared/store/scaleStore";
 import { isValidSlumpCone } from "@/shared/utils/slumpCone";
 import { plumbLogKeys } from "@/entities/plumb-log/model/queryKeys";
@@ -1054,8 +1058,56 @@ function PlumbLogDetail({
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<UpdatePlumbLogDto>({ defaultValues });
+
+  const customerId = useWatch({ control, name: "customerId" });
+  const prevCustomerIdRef = useRef(customerId);
+
+  useEffect(() => {
+    if (
+      prevCustomerIdRef.current !== customerId &&
+      prevCustomerIdRef.current !== undefined
+    ) {
+      setValue("objectId", undefined);
+    }
+    prevCustomerIdRef.current = customerId;
+  }, [customerId, setValue]);
+
+  const loadSuppliers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCompanies({ isActive: true, search }).then((list) =>
+        list.map((c) => ({ id: c.id, label: c.name })),
+      ),
+    [],
+  );
+
+  const loadCustomers = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getCompanies({ isActive: true, function: "OWN", search }).then((list) =>
+        list.map((c) => ({ id: c.id, label: c.name })),
+      ),
+    [],
+  );
+
+  const loadMaterials = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      getMaterials({ isActive: true, filterType: "OTHER", search }).then(
+        (list) => list.map((m) => ({ id: m.id, label: m.name })),
+      ),
+    [],
+  );
+
+  const loadObjects = useCallback(
+    (search: string): Promise<SearchableOption[]> =>
+      customerId
+        ? getObjects({ companyId: customerId, isActive: true, search }).then(
+            (list) => list.map((o) => ({ id: o.id, label: o.name })),
+          )
+        : Promise.resolve([]),
+    [customerId],
+  );
 
   const selectedTransport = transports.find(
     (t) => t.id === plumbLog.transportId,
@@ -1293,27 +1345,136 @@ function PlumbLogDetail({
             <div className="space-y-4">
               <SectionTitle>Общие данные</SectionTitle>
 
-              {/* Поставщик/Заказчик/Материал/Объект — всегда read-only (привязаны к заявке) */}
-              <LockedField
-                label="Поставщик"
-                value={supplierName}
-                editing={isEditing}
-              />
-              <LockedField
-                label="Заказчик"
-                value={customerName}
-                editing={isEditing}
-              />
-              <LockedField
-                label="Материал"
-                value={materialName}
-                editing={isEditing}
-              />
-              <LockedField
-                label="Объект"
-                value={objectName}
-                editing={isEditing}
-              />
+              {/* Поставщик / Заказчик / Материал / Объект */}
+              {isConcrete ? (
+                <>
+                  <LockedField
+                    label="Поставщик"
+                    value={supplierName}
+                    editing={isEditing}
+                  />
+                  <LockedField
+                    label="Заказчик"
+                    value={customerName}
+                    editing={isEditing}
+                  />
+                  <LockedField
+                    label="Материал"
+                    value={materialName}
+                    editing={isEditing}
+                  />
+                  <LockedField
+                    label="Объект"
+                    value={objectName}
+                    editing={isEditing}
+                  />
+                </>
+              ) : isEditing ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Поставщик
+                    </Label>
+                    <Controller
+                      name="supplierId"
+                      control={control}
+                      rules={{ required: "Обязательное поле" }}
+                      render={({ field }) => (
+                        <SearchableSelect
+                          key={field.value ?? "empty-supplier"}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadSuppliers}
+                          placeholder="Выберите поставщика"
+                        />
+                      )}
+                    />
+                    {errors.supplierId && (
+                      <p className="text-xs text-destructive">
+                        {errors.supplierId.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Заказчик
+                    </Label>
+                    <Controller
+                      name="customerId"
+                      control={control}
+                      rules={{ required: "Обязательное поле" }}
+                      render={({ field }) => (
+                        <SearchableSelect
+                          key={field.value ?? "empty-customer"}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadCustomers}
+                          placeholder="Выберите заказчика"
+                        />
+                      )}
+                    />
+                    {errors.customerId && (
+                      <p className="text-xs text-destructive">
+                        {errors.customerId.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Материал
+                    </Label>
+                    <Controller
+                      name="materialId"
+                      control={control}
+                      rules={{ required: "Обязательное поле" }}
+                      render={({ field }) => (
+                        <SearchableSelect
+                          key={field.value ?? "empty-material"}
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadMaterials}
+                          placeholder="Выберите материал"
+                        />
+                      )}
+                    />
+                    {errors.materialId && (
+                      <p className="text-xs text-destructive">
+                        {errors.materialId.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Объект
+                    </Label>
+                    <Controller
+                      name="objectId"
+                      control={control}
+                      render={({ field }) => (
+                        <SearchableSelect
+                          key={`${customerId ?? "none"}-${field.value ?? "empty-object"}`}
+                          value={field.value ?? undefined}
+                          onChange={(id) => field.onChange(id)}
+                          loadOptions={loadObjects}
+                          disabled={!customerId}
+                          placeholder={
+                            !customerId
+                              ? "Сначала выберите заказчика"
+                              : "Выберите объект"
+                          }
+                        />
+                      )}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ViewField label="Поставщик" value={supplierName} />
+                  <ViewField label="Заказчик" value={customerName} />
+                  <ViewField label="Материал" value={materialName} />
+                  <ViewField label="Объект" value={objectName} />
+                </>
+              )}
 
               {isConcrete ? (
                 isEditing ? (
