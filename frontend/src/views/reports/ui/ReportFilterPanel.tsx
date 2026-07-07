@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/shared/ui/select'
 import { SearchableSelect } from '@/shared/ui/SearchableSelect'
+import { SearchableMultiSelect } from '@/shared/ui/SearchableMultiSelect'
 import { DateTimePickerButton } from '@/shared/ui/date-time-picker-button'
 import { getCompanies } from '@/entities/company/api/companyApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
@@ -43,11 +44,11 @@ interface Props {
 }
 
 interface FilterState {
-  supplierId?: number
-  customerId?: number
+  supplierIds?: number[]
+  customerIds?: number[]
   materialId?: number
-  carrierId?: number
-  objectId?: number
+  carrierIds?: number[]
+  objectIds?: number[]
   supplierType?: CompanyType
   customerType?: CompanyType
 }
@@ -79,9 +80,9 @@ export function ReportFilterPanel({ tab }: Props) {
     const result: ReportFilters = {}
     for (const key of activeKeys) {
       const val = filters[key as keyof FilterState]
-      if (val !== undefined) {
-        (result as Record<string, unknown>)[key] = val
-      }
+      if (val === undefined) continue
+      if (Array.isArray(val) && val.length === 0) continue
+      ;(result as Record<string, unknown>)[key] = val
     }
     return result
   }
@@ -132,7 +133,7 @@ export function ReportFilterPanel({ tab }: Props) {
     [],
   )
 
-  function setFilter(key: FilterKey, value: number | CompanyType | undefined) {
+  function setFilter(key: FilterKey, value: number | number[] | CompanyType | undefined) {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -220,24 +221,24 @@ export function ReportFilterPanel({ tab }: Props) {
       {/* Динамические фильтры */}
       {activeKeys.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {activeKeys.includes('supplierId') && (
+          {activeKeys.includes('supplierIds') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Поставщик</Label>
-              <SearchableSelect
-                value={filters.supplierId}
-                onChange={(v) => setFilter('supplierId', v)}
+              <SearchableMultiSelect
+                value={filters.supplierIds}
+                onChange={(v) => setFilter('supplierIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadSuppliers}
                 placeholder="Все поставщики"
               />
             </div>
           )}
 
-          {activeKeys.includes('customerId') && (
+          {activeKeys.includes('customerIds') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Заказчик</Label>
-              <SearchableSelect
-                value={filters.customerId}
-                onChange={(v) => setFilter('customerId', v)}
+              <SearchableMultiSelect
+                value={filters.customerIds}
+                onChange={(v) => setFilter('customerIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadCustomers}
                 placeholder="Все заказчики"
               />
@@ -256,24 +257,24 @@ export function ReportFilterPanel({ tab }: Props) {
             </div>
           )}
 
-          {activeKeys.includes('carrierId') && (
+          {activeKeys.includes('carrierIds') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Перевозчик</Label>
-              <SearchableSelect
-                value={filters.carrierId}
-                onChange={(v) => setFilter('carrierId', v)}
+              <SearchableMultiSelect
+                value={filters.carrierIds}
+                onChange={(v) => setFilter('carrierIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadCarriers}
                 placeholder="Все перевозчики"
               />
             </div>
           )}
 
-          {activeKeys.includes('objectId') && (
+          {activeKeys.includes('objectIds') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Объект</Label>
-              <SearchableSelect
-                value={filters.objectId}
-                onChange={(v) => setFilter('objectId', v)}
+              <SearchableMultiSelect
+                value={filters.objectIds}
+                onChange={(v) => setFilter('objectIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadObjects}
                 placeholder="Все объекты"
               />

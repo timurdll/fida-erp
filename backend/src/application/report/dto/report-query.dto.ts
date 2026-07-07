@@ -1,6 +1,13 @@
-import { Type } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsISO8601, IsOptional } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsArray, IsEnum, IsIn, IsInt, IsISO8601, IsOptional } from 'class-validator';
 import { CompanyType } from '../../../domain/company/company.entity';
+
+function toIntArray({ value }: { value: unknown }): number[] | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const arr = Array.isArray(value) ? value : [value];
+  const nums = arr.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
+  return nums.length > 0 ? nums : undefined;
+}
 
 export class ReportQueryDto {
   // Полный ISO datetime (НЕ date-only): фильтр firstWeighingAt BETWEEN dateFrom..dateTo
@@ -16,14 +23,16 @@ export class ReportQueryDto {
   format?: 'xlsx' | 'json';
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  supplierId?: number;
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  supplierIds?: number[];
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  customerId?: number;
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  customerIds?: number[];
 
   @IsOptional()
   @Type(() => Number)
@@ -31,14 +40,16 @@ export class ReportQueryDto {
   materialId?: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  carrierId?: number;
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  carrierIds?: number[];
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  objectId?: number;
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  objectIds?: number[];
 
   @IsOptional()
   @IsEnum(CompanyType)

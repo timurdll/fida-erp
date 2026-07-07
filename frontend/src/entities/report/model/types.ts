@@ -70,24 +70,24 @@ export const REPORT_LABELS: Record<ReportType, string> = {
 }
 
 export type FilterKey =
-  | 'supplierId'
-  | 'customerId'
+  | 'supplierIds'
+  | 'customerIds'
   | 'materialId'
-  | 'carrierId'
-  | 'objectId'
+  | 'carrierIds'
+  | 'objectIds'
   | 'supplierType'
   | 'customerType'
 
 export const REPORT_FILTER_CONFIG: Record<ReportType, FilterKey[]> = {
-  'otvesy-detail': ['supplierId', 'customerId', 'materialId', 'carrierId', 'supplierType'],
-  'otvesy-summary': ['supplierId', 'customerId', 'carrierId', 'supplierType'],
+  'otvesy-detail': ['supplierIds', 'customerIds', 'materialId', 'carrierIds', 'supplierType'],
+  'otvesy-summary': ['supplierIds', 'customerIds', 'carrierIds', 'supplierType'],
   'otvesy-deleted': [],
   'otvesy-materials': ['materialId'],
-  'zayavki-summary': ['supplierId', 'customerId', 'customerType', 'objectId'],
+  'zayavki-summary': ['supplierIds', 'customerIds', 'customerType', 'objectIds'],
   'zayavki-fida-summary': [],
-  'zayavki-detail': ['supplierId', 'customerId', 'customerType', 'objectId', 'materialId', 'carrierId'],
+  'zayavki-detail': ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialId', 'carrierIds'],
   'zayavki-deleted': [],
-  vozvrat: ['supplierId', 'customerId'],
+  vozvrat: ['supplierIds', 'customerIds'],
 }
 
 export const OTVESY_TYPES: ReportType[] = [

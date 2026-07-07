@@ -5,11 +5,11 @@ export const REPORT_REPOSITORY = 'REPORT_REPOSITORY';
 export interface ReportFilters {
   dateFrom: Date;
   dateTo: Date;
-  supplierId?: number;
-  customerId?: number;
+  supplierIds?: number[];
+  customerIds?: number[];
   materialId?: number;
-  carrierId?: number;
-  objectId?: number;
+  carrierIds?: number[];
+  objectIds?: number[];
   supplierType?: CompanyType;
   customerType?: CompanyType;
 }

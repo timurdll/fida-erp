@@ -114,11 +114,11 @@ export class PrismaReportRepository implements IReportRepository {
   /** Опциональные фильтры, общие для всех отчётов (применяются, только если заданы). */
   private optionalWhere(f: ReportFilters): Record<string, unknown> {
     const w: Record<string, unknown> = {};
-    if (f.supplierId !== undefined) w.supplierId = f.supplierId;
-    if (f.customerId !== undefined) w.customerId = f.customerId;
+    if (f.supplierIds?.length) w.supplierId = { in: f.supplierIds };
+    if (f.customerIds?.length) w.customerId = { in: f.customerIds };
     if (f.materialId !== undefined) w.materialId = f.materialId;
-    if (f.carrierId !== undefined) w.carrierId = f.carrierId;
-    if (f.objectId !== undefined) w.objectId = f.objectId;
+    if (f.carrierIds?.length) w.carrierId = { in: f.carrierIds };
+    if (f.objectIds?.length) w.objectId = { in: f.objectIds };
     if (f.supplierType !== undefined) w.supplier = { type: f.supplierType as any };
     if (f.customerType !== undefined) w.customer = { type: f.customerType as any };
     return w;

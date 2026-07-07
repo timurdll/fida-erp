@@ -51,11 +51,11 @@ export class ReportController {
     const filters: ReportFilters = {
       dateFrom,
       dateTo,
-      supplierId: query.supplierId,
-      customerId: query.customerId,
+      supplierIds: query.supplierIds,
+      customerIds: query.customerIds,
       materialId: query.materialId,
-      carrierId: query.carrierId,
-      objectId: query.objectId,
+      carrierIds: query.carrierIds,
+      objectIds: query.objectIds,
       supplierType: query.supplierType,
       customerType: query.customerType,
     };

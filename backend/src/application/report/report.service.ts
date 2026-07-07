@@ -178,7 +178,7 @@ export class ReportService {
   // 1. Детальный по отвесам
   private async otvesyDetail(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findIndependentActive(
-      this.pick(f, ['supplierId', 'customerId', 'materialId', 'carrierId', 'supplierType']),
+      this.pick(f, ['supplierIds', 'customerIds', 'materialId', 'carrierIds', 'supplierType']),
     );
     const columns = cols(
       ['№', INT], ['Номер наклад.', INT], ['Дата и время заезда/выезда'],
@@ -201,7 +201,7 @@ export class ReportService {
   // 2. Сводный по отвесам — группировка (поставщик, перевозчик, материал), Σnet
   private async otvesySummary(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findIndependentActive(
-      this.pick(f, ['supplierId', 'customerId', 'carrierId', 'supplierType']),
+      this.pick(f, ['supplierIds', 'customerIds', 'carrierIds', 'supplierType']),
     );
     const map = new Map<string, { supplier: string; carrier: string; material: string; sum: number }>();
     for (const r of rows) {
@@ -263,7 +263,7 @@ export class ReportService {
   // 5. Сводный по заявкам — группировка (заказчик, объект, материал), Σvolume
   private async zayavkiSummary(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findDependentActive(
-      this.pick(f, ['supplierId', 'customerId', 'customerType', 'objectId']),
+      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds']),
     );
     const map = new Map<string, { customer: string; object: string; material: string; sum: number }>();
     for (const r of rows) {
@@ -362,7 +362,7 @@ export class ReportService {
   // 6. Детальный по заявкам
   private async zayavkiDetail(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findDependentActive(
-      this.pick(f, ['supplierId', 'customerId', 'customerType', 'objectId', 'materialId', 'carrierId']),
+      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialId', 'carrierIds']),
     );
     const columns = cols(
       ['№', INT], ['Номер наклад.', INT], ['Дата и время заезда/выезда'],
@@ -403,7 +403,7 @@ export class ReportService {
 
   // 8. Возврат — Заказчик = supplier записи-возврата (исходный заказчик)
   private async vozvrat(f: ReportFilters): Promise<ReportResult> {
-    const rows = await this.repo.findReturns(this.pick(f, ['supplierId', 'customerId']));
+    const rows = await this.repo.findReturns(this.pick(f, ['supplierIds', 'customerIds']));
     const columns = cols(
       ['ID', INT], ['Дата'], ['Гос.номер'], ['Заказчик'], ['Марка бетона'],
       ['Брутто', INT], ['Тара', INT], ['Нетто', INT], ['У/в', INT], ['М3', FLOAT2],

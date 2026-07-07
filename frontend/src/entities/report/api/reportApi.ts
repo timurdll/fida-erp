@@ -5,11 +5,11 @@ import type { ReportResult, ReportType } from '../model/types'
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
 
 export interface ReportFilters {
-  supplierId?: number
-  customerId?: number
+  supplierIds?: number[]
+  customerIds?: number[]
   materialId?: number
-  carrierId?: number
-  objectId?: number
+  carrierIds?: number[]
+  objectIds?: number[]
   supplierType?: CompanyType
   customerType?: CompanyType
 }
@@ -30,15 +30,22 @@ export async function getAuthToken(): Promise<string | null> {
   }
 }
 
+function appendIds(params: URLSearchParams, key: string, ids?: number[]) {
+  if (!ids?.length) return
+  for (const id of ids) {
+    params.append(key, String(id))
+  }
+}
+
 function buildParams(dateFrom: Date, dateTo: Date, filters: ReportFilters): URLSearchParams {
   const params = new URLSearchParams()
   params.set('dateFrom', dateFrom.toISOString())
   params.set('dateTo', dateTo.toISOString())
-  if (filters.supplierId !== undefined) params.set('supplierId', String(filters.supplierId))
-  if (filters.customerId !== undefined) params.set('customerId', String(filters.customerId))
+  appendIds(params, 'supplierIds', filters.supplierIds)
+  appendIds(params, 'customerIds', filters.customerIds)
   if (filters.materialId !== undefined) params.set('materialId', String(filters.materialId))
-  if (filters.carrierId !== undefined) params.set('carrierId', String(filters.carrierId))
-  if (filters.objectId !== undefined) params.set('objectId', String(filters.objectId))
+  appendIds(params, 'carrierIds', filters.carrierIds)
+  appendIds(params, 'objectIds', filters.objectIds)
   if (filters.supplierType !== undefined) params.set('supplierType', filters.supplierType)
   if (filters.customerType !== undefined) params.set('customerType', filters.customerType)
   return params
