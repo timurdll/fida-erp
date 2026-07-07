@@ -93,6 +93,8 @@ export interface UpdatePlumbLogDto {
   documentWeight?: number | null
   tare?: number | null
   gross?: number | null
+  firstWeighingAt?: string | null
+  secondWeighingAt?: string | null
 }
 
 export interface PlumbLogFilters {

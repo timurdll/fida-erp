@@ -93,10 +93,20 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
     const tare = data.tare ?? existing?.tare ?? null;
     const gross = data.gross ?? existing?.gross ?? null;
     const net = gross != null && tare != null ? gross - tare : null;
+    const { firstWeighingAt, secondWeighingAt, ...rest } = data;
 
     const r = await this.prisma.plumbLog.update({
       where: { id },
-      data: { ...data, net },
+      data: {
+        ...rest,
+        net,
+        ...(firstWeighingAt !== undefined
+          ? { firstWeighingAt: new Date(firstWeighingAt) }
+          : {}),
+        ...(secondWeighingAt !== undefined
+          ? { secondWeighingAt: new Date(secondWeighingAt) }
+          : {}),
+      },
       include: INCLUDE,
     });
     return this.map(r);

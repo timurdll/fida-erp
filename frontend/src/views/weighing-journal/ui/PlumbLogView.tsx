@@ -36,6 +36,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
+import { DateTimePickerField } from "@/shared/ui/datetime-picker-field";
 import { useScaleStore } from "@/shared/store/scaleStore";
 import { isValidSlumpCone } from "@/shared/utils/slumpCone";
 import { plumbLogKeys } from "@/entities/plumb-log/model/queryKeys";
@@ -1045,6 +1046,8 @@ function PlumbLogDetail({
     impurity: plumbLog.impurity ?? undefined,
     cleanNet: plumbLog.cleanNet ?? undefined,
     documentWeight: plumbLog.documentWeight ?? undefined,
+    firstWeighingAt: plumbLog.firstWeighingAt ?? undefined,
+    secondWeighingAt: plumbLog.secondWeighingAt ?? undefined,
   } satisfies UpdatePlumbLogDto;
 
   const {
@@ -1765,20 +1768,100 @@ function PlumbLogDetail({
                 <SectionTitle>Данные по мониторингу</SectionTitle>
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <ReadonlyVal
-                      label="Первое взвешивание"
-                      value={fmt(monitoring.firstAt)}
-                    />
+                    {isEditing ? (
+                      isConcrete ? (
+                        plumbLog.tare != null ? (
+                          <Controller
+                            name="firstWeighingAt"
+                            control={control}
+                            render={({ field }) => (
+                              <DateTimePickerField
+                                label="Первое взвешивание"
+                                value={field.value ?? plumbLog.firstWeighingAt}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <ReadonlyVal
+                            label="Первое взвешивание"
+                            value={fmt(monitoring.firstAt)}
+                          />
+                        )
+                      ) : plumbLog.gross != null ? (
+                        <Controller
+                          name="secondWeighingAt"
+                          control={control}
+                          render={({ field }) => (
+                            <DateTimePickerField
+                              label="Первое взвешивание"
+                              value={field.value ?? plumbLog.secondWeighingAt}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+                      ) : (
+                        <ReadonlyVal
+                          label="Первое взвешивание"
+                          value={fmt(monitoring.firstAt)}
+                        />
+                      )
+                    ) : (
+                      <ReadonlyVal
+                        label="Первое взвешивание"
+                        value={fmt(monitoring.firstAt)}
+                      />
+                    )}
                     <ReadonlyVal
                       label="Оператор"
                       value={monitoring.firstOperator?.fullName ?? "—"}
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <ReadonlyVal
-                      label="Второе взвешивание"
-                      value={fmt(monitoring.secondAt)}
-                    />
+                    {isEditing ? (
+                      isConcrete ? (
+                        plumbLog.gross != null ? (
+                          <Controller
+                            name="secondWeighingAt"
+                            control={control}
+                            render={({ field }) => (
+                              <DateTimePickerField
+                                label="Второе взвешивание"
+                                value={field.value ?? plumbLog.secondWeighingAt}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <ReadonlyVal
+                            label="Второе взвешивание"
+                            value={fmt(monitoring.secondAt)}
+                          />
+                        )
+                      ) : plumbLog.tare != null ? (
+                        <Controller
+                          name="firstWeighingAt"
+                          control={control}
+                          render={({ field }) => (
+                            <DateTimePickerField
+                              label="Второе взвешивание"
+                              value={field.value ?? plumbLog.firstWeighingAt}
+                              onChange={field.onChange}
+                            />
+                          )}
+                        />
+                      ) : (
+                        <ReadonlyVal
+                          label="Второе взвешивание"
+                          value={fmt(monitoring.secondAt)}
+                        />
+                      )
+                    ) : (
+                      <ReadonlyVal
+                        label="Второе взвешивание"
+                        value={fmt(monitoring.secondAt)}
+                      />
+                    )}
                     <ReadonlyVal
                       label="Оператор"
                       value={monitoring.secondOperator?.fullName ?? "—"}

@@ -20,6 +20,7 @@ interface DatePickerButtonProps {
   placeholder?: string
   className?: string
   clearable?: boolean
+  disabled?: boolean
 }
 
 export function DatePickerButton({
@@ -28,6 +29,7 @@ export function DatePickerButton({
   placeholder = 'Выберите дату',
   className,
   clearable = false,
+  disabled = false,
 }: DatePickerButtonProps) {
   const dateObj = value ? parseDateStr(value) : undefined
 
@@ -37,6 +39,7 @@ export function DatePickerButton({
         <Button
           type="button"
           variant="outline"
+          disabled={disabled}
           className={cn(
             'h-9 justify-start text-left font-normal bg-background-elevated border-border',
             !value && 'text-muted-foreground',

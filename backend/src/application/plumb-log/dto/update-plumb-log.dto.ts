@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdatePlumbLogDto {
   @IsOptional()
@@ -86,4 +86,12 @@ export class UpdatePlumbLogDto {
   @IsInt()
   @Min(0)
   gross?: number;
+
+  @IsOptional()
+  @IsDateString()
+  firstWeighingAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  secondWeighingAt?: string;
 }

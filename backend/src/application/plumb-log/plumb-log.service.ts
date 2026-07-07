@@ -48,6 +48,7 @@ export class PlumbLogService {
 
   async update(id: number, dto: UpdatePlumbLogDto) {
     const existing = await this.findById(id);
+    this.assertWeighingTimes(existing, dto);
     const patch: UpdatePlumbLogDto = { ...dto };
     const applicationChanged =
       dto.applicationId !== undefined && dto.applicationId !== existing.applicationId;
@@ -124,6 +125,49 @@ export class PlumbLogService {
       throw new NotFoundException(`Заявка #${id} не найдена`);
     }
     return application;
+  }
+
+  private assertWeighingTimes(
+    existing: { applicationId: number | null; tare: number | null; gross: number | null; firstWeighingAt: Date | null; secondWeighingAt: Date | null },
+    dto: UpdatePlumbLogDto,
+  ) {
+    if (dto.firstWeighingAt !== undefined && existing.tare == null) {
+      throw new BadRequestException(
+        'Нельзя изменить время первого взвешивания (тара): вес тары не сохранён.',
+      );
+    }
+    if (dto.secondWeighingAt !== undefined && existing.gross == null) {
+      throw new BadRequestException(
+        'Нельзя изменить время второго взвешивания (брутто): вес брутто не сохранён.',
+      );
+    }
+
+    const first =
+      dto.firstWeighingAt !== undefined
+        ? new Date(dto.firstWeighingAt)
+        : existing.firstWeighingAt;
+    const second =
+      dto.secondWeighingAt !== undefined
+        ? new Date(dto.secondWeighingAt)
+        : existing.secondWeighingAt;
+
+    if (!first || !second) return;
+
+    const isMaterial = existing.applicationId == null;
+    if (isMaterial) {
+      if (second.getTime() > first.getTime()) {
+        throw new BadRequestException(
+          'Для сырья время взвешивания брутто должно быть не позже времени взвешивания тары.',
+        );
+      }
+      return;
+    }
+
+    if (first.getTime() > second.getTime()) {
+      throw new BadRequestException(
+        'Время взвешивания тары должно быть не позже времени взвешивания брутто.',
+      );
+    }
   }
 
   private assertApplicationVolumeCapacity(
