@@ -17,6 +17,7 @@ import { toLocalDateString } from '@/shared/utils/date'
 import { usePagination } from '@/shared/lib/use-pagination'
 import { TablePagination } from '@/shared/ui/table-pagination'
 import { MobileCard } from '@/shared/ui/mobile-card'
+import { SearchableSelect, type SearchableOption } from '@/shared/ui/SearchableSelect'
 
 const fmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -53,21 +54,19 @@ export function WeighingJournalPage() {
   const [supplierId, setSupplierId] = useState<number | undefined>()
   const [materialId, setMaterialId] = useState<number | undefined>()
 
+  const loadSupplierOptions = async (search: string): Promise<SearchableOption[]> => {
+    const data = await getCompanies({ isActive: true, search: search || undefined })
+    return data.map((c) => ({ id: c.id, label: c.name }))
+  }
+
+  const loadMaterialOptions = async (search: string): Promise<SearchableOption[]> => {
+    const data = await getMaterials({ isActive: true, filterType: 'OTHER', search: search || undefined })
+    return data.map((m) => ({ id: m.id, label: m.name }))
+  }
+
   const { data: plumbLogs = [], isLoading } = useQuery({
     queryKey: plumbLogKeys.list({ dateFrom, dateTo, isActive, supplierId, materialId, standalone: true }),
     queryFn: () => getPlumbLogs({ dateFrom, dateTo, isActive, supplierId, materialId, standalone: true }),
-  })
-
-  const { data: companies = [] } = useQuery({
-    queryKey: ['companies', { isActive: true }],
-    queryFn: () => getCompanies({ isActive: true }),
-    staleTime: 60_000,
-  })
-
-  const { data: materials = [] } = useQuery({
-    queryKey: ['materials', { isActive: true }],
-    queryFn: () => getMaterials({ isActive: true }),
-    staleTime: 60_000,
   })
 
   const filtered = plumbLogs.filter((l) => {
@@ -153,35 +152,25 @@ export function WeighingJournalPage() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={supplierId ? String(supplierId) : 'all'}
-          onValueChange={(v) => setSupplierId(v === 'all' ? undefined : Number(v))}
-        >
-          <SelectTrigger className="w-[200px] bg-background-elevated border-border h-9">
-            <SelectValue placeholder="Поставщик" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все поставщики</SelectItem>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[200px]">
+          <SearchableSelect
+            value={supplierId}
+            onChange={setSupplierId}
+            loadOptions={loadSupplierOptions}
+            placeholder="Все поставщики"
+            clearLabel="Все поставщики"
+          />
+        </div>
 
-        <Select
-          value={materialId ? String(materialId) : 'all'}
-          onValueChange={(v) => setMaterialId(v === 'all' ? undefined : Number(v))}
-        >
-          <SelectTrigger className="w-[180px] bg-background-elevated border-border h-9">
-            <SelectValue placeholder="Материал" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все материалы</SelectItem>
-            {materials.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[180px]">
+          <SearchableSelect
+            value={materialId}
+            onChange={setMaterialId}
+            loadOptions={loadMaterialOptions}
+            placeholder="Все материалы"
+            clearLabel="Все материалы"
+          />
+        </div>
       </div>
 
       {/* Table — планшет+ */}

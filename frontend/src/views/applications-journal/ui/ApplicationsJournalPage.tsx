@@ -371,7 +371,7 @@ export function ApplicationsJournalPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const loadMaterialOptions = async (search: string): Promise<SearchableOption[]> => {
-    const data = await getMaterials({ isActive: true, search: search || undefined });
+    const data = await getMaterials({ isActive: true, excludeType: 'OTHER', search: search || undefined });
     return data.map((m) => ({ id: m.id, label: m.name }));
   };
 
