@@ -31,6 +31,16 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
     };
   }
 
+  private weighingDateFilter(dateFrom?: string, dateTo?: string) {
+    const range: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) range.gte = new Date(dateFrom + 'T00:00:00');
+    if (dateTo) range.lte = new Date(dateTo + 'T23:59:59');
+    if (Object.keys(range).length === 0) return null;
+    return {
+      OR: [{ firstWeighingAt: range }, { secondWeighingAt: range }],
+    };
+  }
+
   async findAll(filters: PlumbLogFilters): Promise<PlumbLogEntity[]> {
     const where: any = {};
 
@@ -44,19 +54,16 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
     if (filters.standalone === true) where.applicationId = null;
 
     if (filters.dateFrom || filters.dateTo) {
-      where.firstWeighingAt = {};
-      if (filters.dateFrom) {
-        where.firstWeighingAt.gte = new Date(filters.dateFrom + 'T00:00:00');
-      }
-      if (filters.dateTo) {
-        where.firstWeighingAt.lte = new Date(filters.dateTo + 'T23:59:59');
-      }
+      Object.assign(where, this.weighingDateFilter(filters.dateFrom, filters.dateTo));
     } else if (filters.applicationId === undefined) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
-      where.firstWeighingAt = { gte: today, lt: tomorrow };
+      where.OR = [
+        { firstWeighingAt: { gte: today, lt: tomorrow } },
+        { secondWeighingAt: { gte: today, lt: tomorrow } },
+      ];
     }
 
     const rows = await this.prisma.plumbLog.findMany({
@@ -81,7 +88,6 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
         tare: tare ?? null,
         gross: gross ?? null,
         net,
-        firstWeighingAt: new Date(),
       },
       include: INCLUDE,
     });
@@ -115,13 +121,26 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
   async weighTare(id: number, tare: number, operatorId: number): Promise<PlumbLogEntity> {
     const existing = await this.prisma.plumbLog.findUnique({ where: { id } });
     const net = existing?.gross != null ? existing.gross - tare : null;
+
+    // Для сырья (applicationId === null): брутто = заезд (secondWeighingAt),
+    // тара = выезд (firstWeighingAt). При batch-создании оба вызова происходят
+    // за миллисекунды, поэтому гарантируем что firstWeighingAt > secondWeighingAt.
+    const isMaterial = existing?.applicationId == null;
+    let firstWeighingAt = new Date();
+    if (isMaterial && existing?.secondWeighingAt != null) {
+      const minFirstAt = new Date(existing.secondWeighingAt.getTime() + 60_000);
+      if (firstWeighingAt <= minFirstAt) {
+        firstWeighingAt = minFirstAt;
+      }
+    }
+
     const r = await this.prisma.plumbLog.update({
       where: { id },
       data: {
         tare,
         net,
-        firstWeighingAt: existing?.firstWeighingAt || new Date(),
-        firstOperatorId: existing?.firstOperatorId || operatorId,
+        firstWeighingAt,
+        firstOperatorId: operatorId,
       },
       include: INCLUDE,
     });
@@ -136,8 +155,8 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
       data: {
         gross,
         net,
-        secondWeighingAt: existing?.secondWeighingAt || new Date(),
-        secondOperatorId: existing?.secondOperatorId || operatorId,
+        secondWeighingAt: new Date(),
+        secondOperatorId: operatorId,
       },
       include: INCLUDE,
     });
