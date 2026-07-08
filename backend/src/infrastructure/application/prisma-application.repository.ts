@@ -178,28 +178,46 @@ export class PrismaApplicationRepository implements IApplicationRepository {
     const { deliveryDate, supplierId, customerId, objectId, materialId,
       constructionId, deliveryMethodId, ...rest } = data as any;
 
-    const r = await this.prisma.application.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(deliveryDate ? { deliveryDate: new Date(deliveryDate) } : {}),
-        ...(supplierId ? { supplier: { connect: { id: supplierId } } } : {}),
-        ...(customerId ? { customer: { connect: { id: customerId } } } : {}),
-        ...(objectId ? { object: { connect: { id: objectId } } } : {}),
-        ...(materialId ? { material: { connect: { id: materialId } } } : {}),
-        ...(constructionId !== undefined
-          ? constructionId
-            ? { construction: { connect: { id: constructionId } } }
-            : { construction: { disconnect: true } }
-          : {}),
-        ...(deliveryMethodId !== undefined
-          ? deliveryMethodId
-            ? { deliveryMethod: { connect: { id: deliveryMethodId } } }
-            : { deliveryMethod: { disconnect: true } }
-          : {}),
-      },
-      include: INCLUDE,
-    });
+    // Поля, которые нужно синхронизировать в привязанных отвесах при изменении
+    const plumbPatch: Record<string, number> = {};
+    if (supplierId) plumbPatch.supplierId = supplierId;
+    if (customerId) plumbPatch.customerId = customerId;
+    if (materialId) plumbPatch.materialId = materialId;
+    if (objectId)   plumbPatch.objectId   = objectId;
+
+    const [r] = await this.prisma.$transaction([
+      this.prisma.application.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(deliveryDate ? { deliveryDate: new Date(deliveryDate) } : {}),
+          ...(supplierId ? { supplier: { connect: { id: supplierId } } } : {}),
+          ...(customerId ? { customer: { connect: { id: customerId } } } : {}),
+          ...(objectId ? { object: { connect: { id: objectId } } } : {}),
+          ...(materialId ? { material: { connect: { id: materialId } } } : {}),
+          ...(constructionId !== undefined
+            ? constructionId
+              ? { construction: { connect: { id: constructionId } } }
+              : { construction: { disconnect: true } }
+            : {}),
+          ...(deliveryMethodId !== undefined
+            ? deliveryMethodId
+              ? { deliveryMethod: { connect: { id: deliveryMethodId } } }
+              : { deliveryMethod: { disconnect: true } }
+            : {}),
+        },
+        include: INCLUDE,
+      }),
+      // Каскадное обновление отвесов: синхронизируем поставщика, заказчика,
+      // материал и объект во всех активных отвесах этой заявки.
+      ...(Object.keys(plumbPatch).length > 0
+        ? [this.prisma.plumbLog.updateMany({
+            where: { applicationId: id, isActive: true },
+            data: plumbPatch,
+          })]
+        : []),
+    ]);
+
     return this.map(r, false);
   }
 
