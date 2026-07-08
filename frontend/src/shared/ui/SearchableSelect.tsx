@@ -25,6 +25,8 @@ interface SearchableSelectProps {
   loadOptions: (search: string) => Promise<SearchableOption[]>
   placeholder?: string
   disabled?: boolean
+  /** Если задан — вверху списка появляется пункт сброса фильтра */
+  clearLabel?: string
   /** Если задан — внизу списка появляется кнопка «+ Добавить новый» */
   onCreateNew?: () => void
   createLabel?: string
@@ -36,6 +38,7 @@ export function SearchableSelect({
   loadOptions,
   placeholder = 'Выберите...',
   disabled,
+  clearLabel,
   onCreateNew,
   createLabel = 'Добавить новый',
 }: SearchableSelectProps) {
@@ -114,6 +117,24 @@ export function SearchableSelect({
               <>
                 <CommandEmpty>Ничего не найдено</CommandEmpty>
                 <CommandGroup>
+                  {clearLabel && (
+                    <CommandItem
+                      value="__clear__"
+                      onSelect={() => {
+                        onChange(undefined)
+                        setSelectedLabel('')
+                        setOpen(false)
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          !value ? 'opacity-100' : 'opacity-0',
+                        )}
+                      />
+                      {clearLabel}
+                    </CommandItem>
+                  )}
                   {options.map((opt) => (
                     <CommandItem
                       key={opt.id}
