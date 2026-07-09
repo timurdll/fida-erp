@@ -601,7 +601,7 @@ export function ApplicationsJournalPage() {
                           {app.deliveryTime ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
-                          {app.customer.name}
+                          {app.customer.type ? `${app.customer.type} ` : ""}{app.customer.name}
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
                           {app.object.name}
@@ -676,7 +676,7 @@ export function ApplicationsJournalPage() {
                     setExpandedId(expandedId === app.id ? null : app.id)
                   }
                   title={`${app.deliveryTime ?? "—"} · №${app.id}`}
-                  subtitle={app.customer.name}
+                  subtitle={app.customer.type ? `${app.customer.type} ${app.customer.name}` : app.customer.name}
                   badge={<StatusDot status={app.status} />}
                   actions={
                     expandedId === app.id ? (

@@ -118,7 +118,7 @@ export function PlanApplicationView({ id, backDate }: Props) {
               Общие данные
             </h2>
             <InfoRow label="Поставщик" value={app.supplier.name} />
-            <InfoRow label="Заказчик" value={app.customer.name} />
+            <InfoRow label="Заказчик" value={app.customer.type ? `${app.customer.type} ${app.customer.name}` : app.customer.name} />
             <InfoRow label="Объект" value={app.object.name} />
             <InfoRow label="Материал" value={app.material.name} />
             <InfoRow label="Автор заявки" value={app.author.fullName} />

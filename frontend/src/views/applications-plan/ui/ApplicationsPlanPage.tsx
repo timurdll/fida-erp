@@ -166,7 +166,7 @@ function CalendarCell({
                 )}
               >
                 <p className={cn('font-medium text-foreground truncate', expanded ? 'text-sm' : 'text-xs')}>
-                  {app.customer.name}
+                  {app.customer.type ? `${app.customer.type} ` : ""}{app.customer.name}
                 </p>
                 <p className={cn('text-muted-foreground truncate', expanded ? 'text-sm' : 'text-xs')}>
                   {app.object.name}
@@ -183,7 +183,7 @@ function CalendarCell({
               <div className="p-4 border-b border-border">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h4 className="font-medium text-foreground truncate">{app.customer.name}</h4>
+                    <h4 className="font-medium text-foreground truncate">{app.customer.type ? `${app.customer.type} ` : ""}{app.customer.name}</h4>
                     <p className="text-sm text-muted-foreground truncate">{app.object.name}</p>
                   </div>
                   <span className={cn('shrink-0 px-2 py-1 rounded text-xs font-medium', BADGE_CLASS[app.status])}>
@@ -647,7 +647,7 @@ export function ApplicationsPlanPage() {
                         <td className="px-4 py-3 text-sm font-medium text-foreground">
                           {app.deliveryTime ?? '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-foreground">{app.customer.name}</td>
+                        <td className="px-4 py-3 text-sm text-foreground">{app.customer.type ? `${app.customer.type} ` : ""}{app.customer.name}</td>
                         <td className="px-4 py-3 text-sm text-foreground">{app.object.name}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -693,7 +693,7 @@ export function ApplicationsPlanPage() {
                 key={app.id}
                 onClick={() => router.push(`/plan/view/${app.id}?backDate=${date}`)}
                 muted={!app.isActive}
-                title={app.customer.name}
+                title={app.customer.type ? `${app.customer.type} ${app.customer.name}` : app.customer.name}
                 subtitle={app.object.name}
                 badge={<DisplayStatusDot app={app} />}
                 rows={[

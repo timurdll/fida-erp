@@ -29,8 +29,8 @@ const PLUMB_SELECT = {
 const PLUMB_ORDER_BY = [{ firstWeighingAt: 'asc' as const }, { id: 'asc' as const }];
 
 const INCLUDE = {
-  supplier: { select: { id: true, name: true } },
-  customer: { select: { id: true, name: true } },
+  supplier: { select: { id: true, name: true, type: true } },
+  customer: { select: { id: true, name: true, type: true } },
   object: { select: { id: true, name: true, address: true } },
   material: { select: { id: true, name: true, type: true } },
   construction: { select: { id: true, name: true } },

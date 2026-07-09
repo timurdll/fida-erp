@@ -31,9 +31,9 @@ export interface PlumbLogSummary {
 export class ApplicationEntity {
   id: number;
   supplierId: number;
-  supplier?: { id: number; name: string };
+  supplier?: { id: number; name: string; type?: string };
   customerId: number;
-  customer?: { id: number; name: string };
+  customer?: { id: number; name: string; type?: string };
   objectId: number;
   object?: { id: number; name: string; address: string | null };
   materialId: number;
