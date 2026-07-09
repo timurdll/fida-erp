@@ -6,6 +6,8 @@ import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { Card } from '@/shared/ui/card'
+import { formatCompanyName } from '@/entities/company/model/types'
 import { applicationKeys } from '@/entities/application/model/queryKeys'
 import { getApplicationById, completeApplication, deactivateApplication } from '@/entities/application/api/applicationApi'
 import { APP_STATUS_LABEL, getApplicationProgressDisplay } from '@/entities/application/model/types'
@@ -118,7 +120,7 @@ export function PlanApplicationView({ id, backDate }: Props) {
               Общие данные
             </h2>
             <InfoRow label="Поставщик" value={app.supplier.name} />
-            <InfoRow label="Заказчик" value={app.customer.type ? `${app.customer.type} ${app.customer.name}` : app.customer.name} />
+            <InfoRow label="Заказчик" value={formatCompanyName(app.customer.name, app.customer.type)} />
             <InfoRow label="Объект" value={app.object.name} />
             <InfoRow label="Материал" value={app.material.name} />
             <InfoRow label="Автор заявки" value={app.author.fullName} />

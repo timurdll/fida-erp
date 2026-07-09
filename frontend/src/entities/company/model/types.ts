@@ -32,3 +32,9 @@ export interface CreateCompanyDto {
 }
 
 export type UpdateCompanyDto = Partial<CreateCompanyDto>
+
+export function formatCompanyName(name: string, type?: string): string {
+  if (!type) return name
+  const label = CompanyTypeLabel[type as CompanyType] || type
+  return `${label} ${name}`
+}

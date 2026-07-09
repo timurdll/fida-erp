@@ -32,6 +32,7 @@ import { getMaterials } from "@/entities/material/api/materialApi";
 import { getTransports } from "@/entities/transport/api/transportApi";
 import { toLocalDateString } from "@/shared/utils/date";
 import { MobileCard } from "@/shared/ui/mobile-card";
+import { formatCompanyName } from "@/entities/company/model/types";
 import {
   SearchableSelect,
   type SearchableOption,
@@ -601,7 +602,7 @@ export function ApplicationsJournalPage() {
                           {app.deliveryTime ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
-                          {app.customer.type ? `${app.customer.type} ` : ""}{app.customer.name}
+                          {formatCompanyName(app.customer.name, app.customer.type)}
                         </td>
                         <td className="px-4 py-3 text-sm text-foreground">
                           {app.object.name}
@@ -676,7 +677,7 @@ export function ApplicationsJournalPage() {
                     setExpandedId(expandedId === app.id ? null : app.id)
                   }
                   title={`${app.deliveryTime ?? "—"} · №${app.id}`}
-                  subtitle={app.customer.type ? `${app.customer.type} ${app.customer.name}` : app.customer.name}
+                  subtitle={formatCompanyName(app.customer.name, app.customer.type)}
                   badge={<StatusDot status={app.status} />}
                   actions={
                     expandedId === app.id ? (
