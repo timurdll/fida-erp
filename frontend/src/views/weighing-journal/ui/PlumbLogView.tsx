@@ -213,15 +213,10 @@ function printTTN(plumbLog: PlumbLog) {
   const docDate = formatDateTime(departureAt ?? arrivalAt);
   const grossTons = toTons(plumbLog.gross);
   const tareTons = toTons(plumbLog.tare);
-  // «Количество» в ТТН — нетто за вычетом сорности (impurity, %). При impurity 0/null → чистое нетто.
+  // «Количество» в ТТН — нетто за вычетом сорности (уже учтено в plumbLog.net с бэкенда).
   const quantityTons =
     plumbLog.net != null
-      ? (
-          Math.round(
-            ((plumbLog.net * (1 - (plumbLog.impurity ?? 0) / 100)) / 1000) *
-              100,
-          ) / 100
-        ).toFixed(2)
+      ? toTons(plumbLog.net, 2)
       : "";
   const grossTons3 = toTons(plumbLog.gross, 3);
   const objectName = plumbLog.object?.name;
@@ -1153,6 +1148,14 @@ function PlumbLogDetail({
   const netPreview =
     grossNum != null && tareNum != null && !grossInvalid
       ? grossNum - tareNum
+      : null;
+  
+  const currentNet = netPreview ?? plumbLog.net;
+  const watchedImpurity = useWatch({ control, name: "impurity" });
+  const currentImpurity = watchedImpurity ?? plumbLog.impurity ?? 0;
+  const cleanNetPreview =
+    currentNet != null
+      ? Math.round(currentNet * (1 - currentImpurity / 100))
       : null;
 
   // isSaving — единый флаг для кнопки Сохранить всей формы
@@ -2162,12 +2165,26 @@ function PlumbLogDetail({
                     </div>
                   </div>
 
-                  {plumbLog.cleanNet != null && (
-                    <ReadonlyVal
-                      label="Чистый вес, кг"
-                      value={plumbLog.cleanNet.toLocaleString("ru-RU")}
-                    />
-                  )}
+                  {/* Чистый вес — предпросмотр */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm text-muted-foreground">
+                      Чистый вес (с учётом сорности), кг
+                    </Label>
+                    <div className="h-10 rounded-md border border-success/20 bg-success/10 px-4 flex items-center">
+                      <span className="text-base font-semibold text-success">
+                        {cleanNetPreview != null
+                          ? cleanNetPreview.toLocaleString("ru-RU")
+                          : "—"}
+                      </span>
+                      {cleanNetPreview != null && plumbLog.cleanNet !== cleanNetPreview && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (предпросмотр)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+
 
                   {/* Статус весов */}
                   {isConnected ? (

@@ -25,9 +25,13 @@ export class PrismaPlumbLogRepository implements IPlumbLogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private map(raw: any): PlumbLogEntity {
+    const rawNet = raw.gross != null && raw.tare != null ? raw.gross - raw.tare : null;
+    const impurity = raw.impurity ?? 0;
+    const cleanNet = rawNet != null ? Math.round(rawNet * (1 - impurity / 100)) : null;
     return {
       ...raw,
-      net: raw.gross != null && raw.tare != null ? raw.gross - raw.tare : null,
+      net: rawNet,
+      cleanNet,
     };
   }
 

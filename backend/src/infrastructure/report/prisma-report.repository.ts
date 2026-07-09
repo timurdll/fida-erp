@@ -12,6 +12,7 @@ const SELECT = {
   net: true,
   gross: true,
   tare: true,
+  impurity: true,
   volume: true,
   note: true,
   firstWeighingAt: true,
@@ -60,10 +61,12 @@ export class PrismaReportRepository implements IReportRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   private map(r: any): ReportPlumbRow {
-    const net = r.net ?? (r.gross != null && r.tare != null ? r.gross - r.tare : null);
+    const rawNet = r.net ?? (r.gross != null && r.tare != null ? r.gross - r.tare : null);
+    const impurity = r.impurity ?? 0;
+    const cleanNet = rawNet != null ? Math.round(rawNet * (1 - impurity / 100)) : null;
     return {
       id: r.id,
-      net,
+      net: cleanNet,
       gross: r.gross,
       tare: r.tare,
       volume: r.volume,
