@@ -119,7 +119,7 @@ export class PrismaReportRepository implements IReportRepository {
     const w: Record<string, unknown> = {};
     if (f.supplierIds?.length) w.supplierId = { in: f.supplierIds };
     if (f.customerIds?.length) w.customerId = { in: f.customerIds };
-    if (f.materialId !== undefined) w.materialId = f.materialId;
+    if (f.materialIds?.length) w.materialId = { in: f.materialIds };
     if (f.carrierIds?.length) w.carrierId = { in: f.carrierIds };
     if (f.objectIds?.length) w.objectId = { in: f.objectIds };
     if (f.supplierType !== undefined) w.supplier = { type: f.supplierType as any };

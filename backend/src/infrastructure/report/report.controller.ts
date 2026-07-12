@@ -48,12 +48,17 @@ export class ReportController {
       throw new BadRequestException('Некорректные даты dateFrom/dateTo');
     }
 
+    const materialIds = [
+      ...(query.materialIds ?? []),
+      ...(query.materialId !== undefined ? [query.materialId] : []),
+    ];
+
     const filters: ReportFilters = {
       dateFrom,
       dateTo,
       supplierIds: query.supplierIds,
       customerIds: query.customerIds,
-      materialId: query.materialId,
+      materialIds: materialIds.length > 0 ? [...new Set(materialIds)] : undefined,
       carrierIds: query.carrierIds,
       objectIds: query.objectIds,
       supplierType: query.supplierType,

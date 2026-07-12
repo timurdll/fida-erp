@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select'
-import { SearchableSelect } from '@/shared/ui/SearchableSelect'
 import { SearchableMultiSelect } from '@/shared/ui/SearchableMultiSelect'
 import { DateTimePickerButton } from '@/shared/ui/date-time-picker-button'
 import { getCompanies } from '@/entities/company/api/companyApi'
@@ -46,7 +45,7 @@ interface Props {
 interface FilterState {
   supplierIds?: number[]
   customerIds?: number[]
-  materialId?: number
+  materialIds?: number[]
   carrierIds?: number[]
   objectIds?: number[]
   supplierType?: CompanyType
@@ -133,7 +132,7 @@ export function ReportFilterPanel({ tab }: Props) {
     [],
   )
 
-  function setFilter(key: FilterKey, value: number | number[] | CompanyType | undefined) {
+  function setFilter(key: FilterKey, value: number[] | CompanyType | undefined) {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -245,12 +244,12 @@ export function ReportFilterPanel({ tab }: Props) {
             </div>
           )}
 
-          {activeKeys.includes('materialId') && (
+          {activeKeys.includes('materialIds') && (
             <div className="space-y-1.5">
               <Label className="text-sm text-foreground">Материал</Label>
-              <SearchableSelect
-                value={filters.materialId}
-                onChange={(v) => setFilter('materialId', v)}
+              <SearchableMultiSelect
+                value={filters.materialIds}
+                onChange={(v) => setFilter('materialIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadMaterials}
                 placeholder="Все материалы"
               />

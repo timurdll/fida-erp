@@ -7,7 +7,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/a
 export interface ReportFilters {
   supplierIds?: number[]
   customerIds?: number[]
-  materialId?: number
+  materialIds?: number[]
   carrierIds?: number[]
   objectIds?: number[]
   supplierType?: CompanyType
@@ -43,7 +43,7 @@ function buildParams(dateFrom: Date, dateTo: Date, filters: ReportFilters): URLS
   params.set('dateTo', dateTo.toISOString())
   appendIds(params, 'supplierIds', filters.supplierIds)
   appendIds(params, 'customerIds', filters.customerIds)
-  if (filters.materialId !== undefined) params.set('materialId', String(filters.materialId))
+  appendIds(params, 'materialIds', filters.materialIds)
   appendIds(params, 'carrierIds', filters.carrierIds)
   appendIds(params, 'objectIds', filters.objectIds)
   if (filters.supplierType !== undefined) params.set('supplierType', filters.supplierType)

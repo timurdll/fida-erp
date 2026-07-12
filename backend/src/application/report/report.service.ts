@@ -178,7 +178,7 @@ export class ReportService {
   // 1. Детальный по отвесам
   private async otvesyDetail(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findIndependentActive(
-      this.pick(f, ['supplierIds', 'customerIds', 'materialId', 'carrierIds', 'supplierType']),
+      this.pick(f, ['supplierIds', 'customerIds', 'materialIds', 'carrierIds', 'supplierType']),
     );
     const columns = cols(
       ['№', INT], ['Номер наклад.', INT], ['Дата и время заезда/выезда'],
@@ -243,7 +243,7 @@ export class ReportService {
 
   // 4. По материалам — группировка по материалу, Σnet
   private async otvesyMaterials(f: ReportFilters): Promise<ReportResult> {
-    const rows = await this.repo.findIndependentActive(this.pick(f, ['materialId']));
+    const rows = await this.repo.findIndependentActive(this.pick(f, ['materialIds', 'carrierIds']));
     const map = new Map<number, { material: string; sum: number }>();
     for (const r of rows) {
       const e = map.get(r.materialId) ?? { material: r.materialName ?? '', sum: 0 };
@@ -362,7 +362,7 @@ export class ReportService {
   // 6. Детальный по заявкам
   private async zayavkiDetail(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findDependentActive(
-      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialId', 'carrierIds']),
+      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialIds', 'carrierIds']),
     );
     const columns = cols(
       ['№', INT], ['Номер наклад.', INT], ['Дата и время заезда/выезда'],

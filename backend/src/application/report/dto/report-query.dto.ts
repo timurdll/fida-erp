@@ -43,6 +43,12 @@ export class ReportQueryDto {
   @Transform(toIntArray)
   @IsArray()
   @IsInt({ each: true })
+  materialIds?: number[];
+
+  @IsOptional()
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
   carrierIds?: number[];
 
   @IsOptional()

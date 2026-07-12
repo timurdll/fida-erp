@@ -7,7 +7,7 @@ export interface ReportFilters {
   dateTo: Date;
   supplierIds?: number[];
   customerIds?: number[];
-  materialId?: number;
+  materialIds?: number[];
   carrierIds?: number[];
   objectIds?: number[];
   supplierType?: CompanyType;
