@@ -188,19 +188,21 @@ export function PlanApplicationView({ id, backDate }: Props) {
             <h2 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Действия
             </h2>
-            {app.status === 'COMPLETED' ? (
-              <p className="text-sm text-success">Заявка выполнена</p>
-            ) : app.status === 'CANCELLED' ? (
+            {app.status === 'CANCELLED' ? (
               <p className="text-sm text-destructive">Заявка деактивирована</p>
             ) : (
               <div className="space-y-2">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => router.push('/plumb/new?applicationId=' + id)}
-                >
-                  + Добавить взвешивание
-                </Button>
+                {app.status === 'COMPLETED' ? (
+                  <p className="text-sm text-success">Заявка выполнена</p>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => router.push('/plumb/new?applicationId=' + id)}
+                  >
+                    + Добавить взвешивание
+                  </Button>
+                )}
                 <Button
                   className="w-full"
                   variant="outline"
@@ -208,34 +210,38 @@ export function PlanApplicationView({ id, backDate }: Props) {
                 >
                   Редактировать заявку
                 </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={completeMutation.isPending}
-                  onClick={() => {
-                    if (progress.loading > 0) {
-                      toast.error('Нельзя завершить досрочно: есть отвесы в процессе погрузки.')
-                      return
-                    }
-                    if (progress.shipped === 0) {
-                      toast.error('Нельзя завершить досрочно: нет ни одного завершенного отвеса (отгружено 0 м³).')
-                      return
-                    }
-                    if (window.confirm('Завершить заявку досрочно?')) completeMutation.mutate()
-                  }}
-                >
-                  Завершить досрочно
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  disabled={deactivateMutation.isPending}
-                  onClick={() => {
-                    if (window.confirm('Деактивировать заявку? Это действие нельзя отменить.')) deactivateMutation.mutate()
-                  }}
-                >
-                  Деактивировать
-                </Button>
+                {app.status !== 'COMPLETED' && (
+                  <>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled={completeMutation.isPending}
+                      onClick={() => {
+                        if (progress.loading > 0) {
+                          toast.error('Нельзя завершить досрочно: есть отвесы в процессе погрузки.')
+                          return
+                        }
+                        if (progress.shipped === 0) {
+                          toast.error('Нельзя завершить досрочно: нет ни одного завершенного отвеса (отгружено 0 м³).')
+                          return
+                        }
+                        if (window.confirm('Завершить заявку досрочно?')) completeMutation.mutate()
+                      }}
+                    >
+                      Завершить досрочно
+                    </Button>
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      disabled={deactivateMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm('Деактивировать заявку? Это действие нельзя отменить.')) deactivateMutation.mutate()
+                      }}
+                    >
+                      Деактивировать
+                    </Button>
+                  </>
+                )}
               </div>
             )}
           </div>
