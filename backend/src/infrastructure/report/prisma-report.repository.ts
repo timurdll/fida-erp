@@ -28,6 +28,8 @@ const SELECT = {
   object: { select: { name: true } },
   transport: { select: { plateNumber: true } },
   carrier: { select: { name: true } },
+  construction: { select: { name: true } },
+  application: { select: { construction: { select: { name: true } } } },
   nomenclature: { select: { name: true } },
   firstOperator: { select: { fullName: true } },
   secondOperator: { select: { fullName: true } },
@@ -79,6 +81,7 @@ export class PrismaReportRepository implements IReportRepository {
       objectName: r.object?.name ?? null,
       plateNumber: r.transport?.plateNumber ?? null,
       carrierName: r.carrier?.name ?? null,
+      constructionName: r.construction?.name ?? r.application?.construction?.name ?? null,
       nomenclatureName: r.nomenclature?.name ?? null,
       operatorName:
         r.secondOperator?.fullName ?? r.firstOperator?.fullName ?? null,
@@ -117,6 +120,8 @@ export class PrismaReportRepository implements IReportRepository {
   /** Опциональные фильтры, общие для всех отчётов (применяются, только если заданы). */
   private optionalWhere(f: ReportFilters): Record<string, unknown> {
     const w: Record<string, unknown> = {};
+    const andConditions: any[] = [];
+
     if (f.supplierIds?.length) w.supplierId = { in: f.supplierIds };
     if (f.customerIds?.length) w.customerId = { in: f.customerIds };
     if (f.materialIds?.length) w.materialId = { in: f.materialIds };
@@ -124,6 +129,32 @@ export class PrismaReportRepository implements IReportRepository {
     if (f.objectIds?.length) w.objectId = { in: f.objectIds };
     if (f.supplierType !== undefined) w.supplier = { type: f.supplierType as any };
     if (f.customerType !== undefined) w.customer = { type: f.customerType as any };
+
+    if (f.constructionIds?.length) {
+      andConditions.push({
+        OR: [
+          { constructionId: { in: f.constructionIds } },
+          { 
+            constructionId: null,
+            application: { constructionId: { in: f.constructionIds } } 
+          },
+        ],
+      });
+    }
+
+    if (f.operatorIds?.length) {
+      andConditions.push({
+        OR: [
+          { firstOperatorId: { in: f.operatorIds } },
+          { secondOperatorId: { in: f.operatorIds } },
+        ],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      w.AND = andConditions;
+    }
+
     return w;
   }
 

@@ -12,6 +12,8 @@ export interface ReportFilters {
   objectIds?: number[];
   supplierType?: CompanyType;
   customerType?: CompanyType;
+  constructionIds?: number[];
+  operatorIds?: number[];
 }
 
 /** Лёгкая проекция PlumbLog с разворованными именами связей — единый источник для всех отчётов. */
@@ -32,6 +34,7 @@ export interface ReportPlumbRow {
   plateNumber: string | null;
   carrierName: string | null;
   nomenclatureName: string | null;
+  constructionName: string | null;
   operatorName: string | null; // secondOperator?.fullName ?? firstOperator?.fullName
   // id связей (для устойчивой группировки)
   supplierId: number;

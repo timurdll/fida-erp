@@ -77,6 +77,8 @@ export type FilterKey =
   | 'objectIds'
   | 'supplierType'
   | 'customerType'
+  | 'constructionIds'
+  | 'operatorIds'
 
 export const REPORT_FILTER_CONFIG: Record<ReportType, FilterKey[]> = {
   'otvesy-detail': ['supplierIds', 'customerIds', 'materialIds', 'carrierIds', 'supplierType'],
@@ -85,7 +87,7 @@ export const REPORT_FILTER_CONFIG: Record<ReportType, FilterKey[]> = {
   'otvesy-materials': ['materialIds', 'carrierIds'],
   'zayavki-summary': ['supplierIds', 'customerIds', 'customerType', 'objectIds'],
   'zayavki-fida-summary': [],
-  'zayavki-detail': ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialIds', 'carrierIds'],
+  'zayavki-detail': ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialIds', 'carrierIds', 'constructionIds', 'operatorIds'],
   'zayavki-deleted': [],
   vozvrat: ['supplierIds', 'customerIds'],
 }

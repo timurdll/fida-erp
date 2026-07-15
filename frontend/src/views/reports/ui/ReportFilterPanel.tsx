@@ -18,6 +18,8 @@ import { getCompanies } from '@/entities/company/api/companyApi'
 import { getMaterials } from '@/entities/material/api/materialApi'
 import { getCarriers } from '@/entities/carrier/api/carrierApi'
 import { getObjects } from '@/entities/object/api/objectApi'
+import { getConstructions } from '@/entities/construction/api/constructionApi'
+import { getUsersApi } from '@/shared/api/users'
 import { CompanyTypeLabel } from '@/entities/company/model/types'
 import type { CompanyType } from '@/entities/company/model/types'
 import {
@@ -50,6 +52,8 @@ interface FilterState {
   objectIds?: number[]
   supplierType?: CompanyType
   customerType?: CompanyType
+  constructionIds?: number[]
+  operatorIds?: number[]
 }
 
 function startOfToday(): Date {
@@ -128,6 +132,25 @@ export function ReportFilterPanel({ tab }: Props) {
     (search: string) =>
       getObjects({ isActive: true, search: search || undefined }).then((data) =>
         data.map((o) => ({ id: o.id, label: o.name })),
+      ),
+    [],
+  )
+
+  const loadConstructions = useCallback(
+    (search: string) =>
+      getConstructions({ isActive: true, search: search || undefined }).then((data) =>
+        data.map((c) => ({ id: c.id, label: c.name })),
+      ),
+    [],
+  )
+
+  const loadOperators = useCallback(
+    (search: string) =>
+      getUsersApi().then((data) =>
+        data
+          .filter((u) => u.isActive)
+          .filter((u) => !search || u.fullName.toLowerCase().includes(search.toLowerCase()))
+          .map((u) => ({ id: u.id, label: u.fullName })),
       ),
     [],
   )
@@ -276,6 +299,30 @@ export function ReportFilterPanel({ tab }: Props) {
                 onChange={(v) => setFilter('objectIds', v.length > 0 ? v : undefined)}
                 loadOptions={loadObjects}
                 placeholder="Все объекты"
+              />
+            </div>
+          )}
+
+          {activeKeys.includes('constructionIds') && (
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Тип конструкции</Label>
+              <SearchableMultiSelect
+                value={filters.constructionIds}
+                onChange={(v) => setFilter('constructionIds', v.length > 0 ? v : undefined)}
+                loadOptions={loadConstructions}
+                placeholder="Все конструкции"
+              />
+            </div>
+          )}
+
+          {activeKeys.includes('operatorIds') && (
+            <div className="space-y-1.5">
+              <Label className="text-sm text-foreground">Диспетчер</Label>
+              <SearchableMultiSelect
+                value={filters.operatorIds}
+                onChange={(v) => setFilter('operatorIds', v.length > 0 ? v : undefined)}
+                loadOptions={loadOperators}
+                placeholder="Все диспетчеры"
               />
             </div>
           )}

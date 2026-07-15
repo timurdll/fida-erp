@@ -12,6 +12,8 @@ export interface ReportFilters {
   objectIds?: number[]
   supplierType?: CompanyType
   customerType?: CompanyType
+  constructionIds?: number[]
+  operatorIds?: number[]
 }
 
 function fmtDate(d: Date): string {
@@ -46,6 +48,8 @@ function buildParams(dateFrom: Date, dateTo: Date, filters: ReportFilters): URLS
   appendIds(params, 'materialIds', filters.materialIds)
   appendIds(params, 'carrierIds', filters.carrierIds)
   appendIds(params, 'objectIds', filters.objectIds)
+  appendIds(params, 'constructionIds', filters.constructionIds)
+  appendIds(params, 'operatorIds', filters.operatorIds)
   if (filters.supplierType !== undefined) params.set('supplierType', filters.supplierType)
   if (filters.customerType !== undefined) params.set('customerType', filters.customerType)
   return params

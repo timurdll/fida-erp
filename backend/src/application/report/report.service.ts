@@ -120,10 +120,10 @@ function addZayavkiDetailTotalRow(
 ): void {
   const totalNet = rows.reduce((sum, row) => sum + (row.net ?? 0), 0);
   const totalVolume = rows.reduce((sum, row) => sum + (row.volume ?? 0), 0);
-  const cells: ReportRow['cells'] = Array.from({ length: totalColumns }, () => null);
-  cells[7] = 'Итого';
-  cells[8] = totalNet;
-  cells[11] = totalVolume;
+    const cells: ReportRow['cells'] = Array.from({ length: totalColumns }, () => null);
+  cells[8] = 'Итого';
+  cells[9] = totalNet;
+  cells[12] = totalVolume;
   data.push({ cells, bold: true });
 }
 
@@ -362,18 +362,18 @@ export class ReportService {
   // 6. Детальный по заявкам
   private async zayavkiDetail(f: ReportFilters): Promise<ReportResult> {
     const rows = await this.repo.findDependentActive(
-      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialIds', 'carrierIds']),
+      this.pick(f, ['supplierIds', 'customerIds', 'customerType', 'objectIds', 'materialIds', 'carrierIds', 'constructionIds', 'operatorIds']),
     );
     const columns = cols(
       ['№', INT], ['Номер наклад.', INT], ['Дата и время заезда/выезда'],
-      ['Заказчик'], ['Объект'], ['Номер машины'], ['Марка б/р'], ['Перевозчик'],
+      ['Заказчик'], ['Объект'], ['Номер машины'], ['Марка б/р'], ['Тип конструкции'], ['Перевозчик'],
       ['Нетто', INT], ['Брутто', INT], ['Тара', INT], ['Кубатура', FLOAT2],
       ['Плотность', INT], ['Диспетчер'],
     );
     const data: ReportRow[] = rows.map((r, i) => ({
       cells: [
         i + 1, r.id, entryExit(r),
-        r.customerName, r.objectName, r.plateNumber, r.materialName, r.carrierName,
+        r.customerName, r.objectName, r.plateNumber, r.materialName, r.constructionName, r.carrierName,
         r.net, r.gross, r.tare, r.volume, density(r.net, r.volume), r.operatorName,
       ],
     }));

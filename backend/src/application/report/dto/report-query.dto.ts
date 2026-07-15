@@ -64,4 +64,16 @@ export class ReportQueryDto {
   @IsOptional()
   @IsEnum(CompanyType)
   customerType?: CompanyType;
+
+  @IsOptional()
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  constructionIds?: number[];
+
+  @IsOptional()
+  @Transform(toIntArray)
+  @IsArray()
+  @IsInt({ each: true })
+  operatorIds?: number[];
 }

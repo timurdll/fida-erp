@@ -63,6 +63,8 @@ export class ReportController {
       objectIds: query.objectIds,
       supplierType: query.supplierType,
       customerType: query.customerType,
+      constructionIds: query.constructionIds,
+      operatorIds: query.operatorIds,
     };
 
     const result = await this.service.build(reportType, filters);
