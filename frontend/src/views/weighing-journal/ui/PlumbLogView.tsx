@@ -714,7 +714,9 @@ function ChangeApplicationDialog({
     mutationFn: (applicationId: number) =>
       updatePlumbLog(plumbLog.id, { applicationId }),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({
+      // refetchQueries немедленно перезагружает данные с сервера,
+      // а не просто помечает как stale — UI обновится сразу, даже при медленном интернете.
+      queryClient.refetchQueries({
         queryKey: plumbLogKeys.detail(plumbLog.id),
       });
       queryClient.invalidateQueries({ queryKey: plumbLogKeys.lists() });
